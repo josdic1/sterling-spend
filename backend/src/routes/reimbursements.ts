@@ -4,12 +4,12 @@ import { db } from "../db/index.js";
 
 const router = Router();
 
-const adminQueueQuerySchema = z.object({
+const requestingUserQuerySchema = z.object({
   requesting_user_id: z.string().uuid(),
 });
 
 router.get("/admin/queue", async (req, res) => {
-  const parsed = adminQueueQuerySchema.safeParse(req.query);
+  const parsed = requestingUserQuerySchema.safeParse(req.query);
 
   if (!parsed.success) {
     return res.status(400).json({
@@ -221,8 +221,168 @@ router.get("/current/:userId", async (req, res) => {
     [reimbursement.id],
   );
 
-  res.json({
+  return res.json({
     ...reimbursement,
+    totals: totalsResult.rows[0],
+    expenses: expensesResult.rows,
+    mileage: mileageResult.rows,
+  });
+});
+
+router.get("/:reimbursementId", async (req, res) => {
+  const { reimbursementId } = req.params;
+
+  const parsed = requestingUserQuerySchema.safeParse(req.query);
+
+  if (!parsed.success) {
+    return res.status(400).json({
+      error: "Valid requesting_user_id is required",
+    });
+  }
+
+  const { requesting_user_id } = parsed.data;
+
+  const reimbursementResult = await db.query(
+    `
+      SELECT
+        r.id,
+        r.user_id,
+        u.name AS employee_name,
+        u.email AS employee_email,
+        r.year,
+        r.month,
+        r.status,
+        r.submitted_at,
+        r.reviewed_at,
+        r.check_number,
+        r.paid_at,
+        requesting_user.role AS requesting_user_role,
+        requesting_user.is_active AS requesting_user_is_active
+      FROM reimbursements r
+      JOIN users u
+        ON u.id = r.user_id
+      LEFT JOIN users requesting_user
+        ON requesting_user.id = $2
+      WHERE r.id = $1
+    `,
+    [reimbursementId, requesting_user_id],
+  );
+
+  if (reimbursementResult.rows.length === 0) {
+    return res.status(404).json({
+      error: "Reimbursement not found",
+    });
+  }
+
+  const reimbursement = reimbursementResult.rows[0];
+
+  if (!reimbursement.requesting_user_is_active) {
+    return res.status(403).json({
+      error: "Only an active user can view a reimbursement",
+    });
+  }
+
+  const canView =
+    reimbursement.user_id === requesting_user_id ||
+    reimbursement.requesting_user_role === "admin";
+
+  if (!canView) {
+    return res.status(403).json({
+      error: "You do not have access to this reimbursement",
+    });
+  }
+
+  const expensesResult = await db.query(
+    `
+      SELECT
+        e.id,
+        e.expense_date,
+        e.vendor,
+        e.description,
+        e.claimed_amount,
+        e.approved_amount,
+        c.id AS category_id,
+        c.name AS category_name,
+        ev.id AS event_id,
+        ev.event_number,
+        ev.name AS event_name
+      FROM expenses e
+      JOIN expense_categories c
+        ON c.id = e.category_id
+      LEFT JOIN events ev
+        ON ev.id = e.event_id
+      WHERE e.reimbursement_id = $1
+      ORDER BY e.expense_date DESC, e.created_at DESC
+    `,
+    [reimbursementId],
+  );
+
+  const mileageResult = await db.query(
+    `
+      SELECT
+        me.id,
+        me.trip_date,
+        me.source,
+        me.claimed_miles,
+        me.approved_miles,
+        mr.id AS mileage_rate_id,
+        mr.rate_per_mile,
+        ev.id AS event_id,
+        ev.event_number,
+        ev.name AS event_name
+      FROM mileage_entries me
+      JOIN mileage_rates mr
+        ON mr.id = me.mileage_rate_id
+      JOIN events ev
+        ON ev.id = me.event_id
+      WHERE me.reimbursement_id = $1
+      ORDER BY me.trip_date DESC, me.created_at DESC
+    `,
+    [reimbursementId],
+  );
+
+  const totalsResult = await db.query(
+    `
+      SELECT
+        COALESCE((
+          SELECT SUM(claimed_amount)
+          FROM expenses
+          WHERE reimbursement_id = $1
+        ), 0)
+        +
+        COALESCE((
+          SELECT SUM(me.claimed_miles * mr.rate_per_mile)
+          FROM mileage_entries me
+          JOIN mileage_rates mr
+            ON mr.id = me.mileage_rate_id
+          WHERE me.reimbursement_id = $1
+        ), 0) AS claimed_total,
+
+        COALESCE((
+          SELECT SUM(approved_amount)
+          FROM expenses
+          WHERE reimbursement_id = $1
+        ), 0)
+        +
+        COALESCE((
+          SELECT SUM(me.approved_miles * mr.rate_per_mile)
+          FROM mileage_entries me
+          JOIN mileage_rates mr
+            ON mr.id = me.mileage_rate_id
+          WHERE me.reimbursement_id = $1
+        ), 0) AS approved_total
+    `,
+    [reimbursementId],
+  );
+
+  const {
+    requesting_user_role: _requestingUserRole,
+    requesting_user_is_active: _requestingUserIsActive,
+    ...publicReimbursement
+  } = reimbursement;
+
+  return res.json({
+    ...publicReimbursement,
     totals: totalsResult.rows[0],
     expenses: expensesResult.rows,
     mileage: mileageResult.rows,
@@ -300,7 +460,7 @@ router.post("/:reimbursementId/submit", async (req, res) => {
 
     await client.query("COMMIT");
 
-    res.json(reimbursementResult.rows[0]);
+    return res.json(reimbursementResult.rows[0]);
   } catch (error) {
     await client.query("ROLLBACK");
     throw error;
@@ -379,7 +539,7 @@ router.post("/:reimbursementId/review", async (req, res) => {
 
     await client.query("COMMIT");
 
-    res.json(reimbursementResult.rows[0]);
+    return res.json(reimbursementResult.rows[0]);
   } catch (error) {
     await client.query("ROLLBACK");
     throw error;
@@ -463,7 +623,7 @@ router.post("/:reimbursementId/pay", async (req, res) => {
 
     await client.query("COMMIT");
 
-    res.json(reimbursementResult.rows[0]);
+    return res.json(reimbursementResult.rows[0]);
   } catch (error) {
     await client.query("ROLLBACK");
     throw error;
