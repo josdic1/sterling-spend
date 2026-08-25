@@ -1,4 +1,9 @@
-import { useEffect, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   Navigate,
   Route,
@@ -15,6 +20,7 @@ import {
   Route as RouteIcon,
 } from "lucide-react";
 import { format } from "date-fns";
+import ReceiptCapture from "./components/ReceiptCapture";
 import {
   getActiveEvent,
   getCurrentReimbursement,
@@ -36,37 +42,71 @@ function formatMonth(year: number, month: number) {
 
 function EmployeeHome() {
   const navigate = useNavigate();
+  const receiptInputRef = useRef<HTMLInputElement>(null);
 
   const [reimbursement, setReimbursement] =
     useState<CurrentReimbursement | null>(null);
   const [activeEvent, setActiveEvent] =
     useState<ActiveEvent | null>(null);
+  const [receiptFile, setReceiptFile] =
+    useState<File | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const loadHome = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError("");
+
+      const [reimbursementResult, activeEventResult] =
+        await Promise.all([
+          getCurrentReimbursement(TEST_EMPLOYEE_ID),
+          getActiveEvent(TEST_EMPLOYEE_ID),
+        ]);
+
+      setReimbursement(reimbursementResult);
+      setActiveEvent(activeEventResult);
+    } catch {
+      setError("Could not load Sterling Spend.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
-    async function load() {
-      try {
-        setLoading(true);
-        setError("");
+    void loadHome();
+  }, [loadHome]);
 
-        const [reimbursementResult, activeEventResult] =
-          await Promise.all([
-            getCurrentReimbursement(TEST_EMPLOYEE_ID),
-            getActiveEvent(TEST_EMPLOYEE_ID),
-          ]);
+  function handleReceiptSelected(
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) {
+    const file = event.target.files?.[0];
 
-        setReimbursement(reimbursementResult);
-        setActiveEvent(activeEventResult);
-      } catch {
-        setError("Could not load Sterling Spend.");
-      } finally {
-        setLoading(false);
-      }
+    if (file) {
+      setReceiptFile(file);
     }
 
-    void load();
-  }, []);
+    event.target.value = "";
+  }
+
+  async function handleReceiptSaved() {
+    setReceiptFile(null);
+    await loadHome();
+  }
+
+  if (receiptFile) {
+    return (
+      <div className="employee-app">
+        <ReceiptCapture
+          file={receiptFile}
+          onCancel={() => setReceiptFile(null)}
+          onSaved={() => {
+            void handleReceiptSaved();
+          }}
+        />
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -84,7 +124,8 @@ function EmployeeHome() {
     );
   }
 
-  const canAdd = !reimbursement || reimbursement.status === "open";
+  const canAdd =
+    !reimbursement || reimbursement.status === "open";
 
   return (
     <div className="employee-app">
@@ -139,10 +180,20 @@ function EmployeeHome() {
         )}
 
         <section className="capture-section">
+          <input
+            ref={receiptInputRef}
+            className="receipt-file-input"
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={handleReceiptSelected}
+          />
+
           <button
             type="button"
             className="receipt-action"
             disabled={!canAdd}
+            onClick={() => receiptInputRef.current?.click()}
           >
             <span className="receipt-icon">
               <Camera size={30} />
@@ -184,11 +235,15 @@ function EmployeeHome() {
               </span>
 
               <strong>
-                {formatMoney(reimbursement.totals.claimed_total)}
+                {formatMoney(
+                  reimbursement.totals.claimed_total,
+                )}
               </strong>
             </div>
 
-            <span className={`status-pill ${reimbursement.status}`}>
+            <span
+              className={`status-pill ${reimbursement.status}`}
+            >
               {reimbursement.status}
             </span>
           </section>
@@ -210,14 +265,19 @@ function EmployeeHome() {
           ) : (
             <div className="activity-list">
               {reimbursement.expenses.map((expense) => (
-                <article className="activity-row" key={expense.id}>
+                <article
+                  className="activity-row"
+                  key={expense.id}
+                >
                   <div className="activity-icon">
                     <ReceiptText size={19} />
                   </div>
 
                   <div className="activity-copy">
                     <div className="activity-title">
-                      <strong>{expense.vendor || "Expense"}</strong>
+                      <strong>
+                        {expense.vendor || "Expense"}
+                      </strong>
                       <strong>
                         {formatMoney(expense.claimed_amount)}
                       </strong>
@@ -239,7 +299,10 @@ function EmployeeHome() {
                   Number(entry.rate_per_mile);
 
                 return (
-                  <article className="activity-row" key={entry.id}>
+                  <article
+                    className="activity-row"
+                    key={entry.id}
+                  >
                     <div className="activity-icon">
                       <Car size={19} />
                     </div>
@@ -247,7 +310,9 @@ function EmployeeHome() {
                     <div className="activity-copy">
                       <div className="activity-title">
                         <strong>Mileage</strong>
-                        <strong>{formatMoney(amount)}</strong>
+                        <strong>
+                          {formatMoney(amount)}
+                        </strong>
                       </div>
 
                       <p>
@@ -274,7 +339,10 @@ function AdminQueue() {
   return (
     <div className="admin-placeholder">
       <header>
-        <button type="button" onClick={() => navigate("/")}>
+        <button
+          type="button"
+          onClick={() => navigate("/")}
+        >
           ← Employee
         </button>
       </header>
@@ -286,7 +354,9 @@ function AdminQueue() {
         <div className="recent-empty">
           <ClipboardCheck size={26} />
           <strong>Nothing waiting for review</strong>
-          <span>Submitted reimbursements will appear here.</span>
+          <span>
+            Submitted reimbursements will appear here.
+          </span>
         </div>
       </main>
     </div>
@@ -298,7 +368,10 @@ function App() {
     <Routes>
       <Route path="/" element={<EmployeeHome />} />
       <Route path="/admin" element={<AdminQueue />} />
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route
+        path="*"
+        element={<Navigate to="/" replace />}
+      />
     </Routes>
   );
 }

@@ -4,7 +4,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "tsx watch src/index.ts",
+    "dev": "node --env-file=.env --watch --import tsx src/index.ts",
     "build": "tsc",
     "migrate": "node --env-file=.env dist/db/migrate.js",
     "start": "node --env-file=.env dist/index.js"

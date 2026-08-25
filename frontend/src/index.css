@@ -587,3 +587,17 @@ button:disabled {
     padding-inline: var(--space-4);
   }
 }
+
+/* Native receipt picker stays available to the custom Receipt button,
+   but is never shown in the UI. */
+.receipt-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
