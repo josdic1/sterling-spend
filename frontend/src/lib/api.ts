@@ -312,7 +312,7 @@ export type AdminReimbursementQueueItem = {
   employee_email: string;
   year: number;
   month: number;
-  status: "submitted" | "reviewed";
+  status: "submitted" | "reviewed" | "paid";
   submitted_at: string | null;
   reviewed_at: string | null;
   check_number: string | null;
@@ -335,6 +335,25 @@ export async function getAdminReimbursementQueue(
   if (!response.ok) {
     throw new Error(
       body.error ?? "Could not load reimbursement queue",
+    );
+  }
+
+  return body;
+}
+
+
+export async function getAdminPaidReimbursements(
+  adminUserId: string,
+): Promise<AdminReimbursementQueueItem[]> {
+  const response = await fetch(
+    `/api/reimbursements/admin/paid?requesting_user_id=${adminUserId}`,
+  );
+
+  const body = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      body.error ?? "Could not load paid reimbursements",
     );
   }
 
@@ -515,4 +534,62 @@ export async function payReimbursement(
       body.error ?? "Could not mark reimbursement paid",
     );
   }
+}
+
+export async function uploadCheckStub(
+  reimbursementId: string,
+  adminUserId: string,
+  file: File,
+): Promise<void> {
+  const formData = new FormData();
+
+  formData.append("uploaded_by_user_id", adminUserId);
+  formData.append("purpose", "check_stub");
+  formData.append("file", file);
+
+  const response = await fetch(
+    `/api/reimbursements/${reimbursementId}/attachments`,
+    {
+      method: "POST",
+      body: formData,
+    },
+  );
+
+  const body = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      body.error ?? "Could not upload check stub",
+    );
+  }
+}
+
+export type ReimbursementAttachment = {
+  id: string;
+  file_name: string;
+  mime_type: string;
+  file_size_bytes: number;
+  created_at: string;
+  purpose: "ezpass_statement" | "check_stub" | "other";
+};
+
+export async function getReimbursementAttachments(
+  reimbursementId: string,
+  requestingUserId: string,
+): Promise<ReimbursementAttachment[]> {
+  const response = await fetch(
+    `/api/reimbursements/${reimbursementId}/attachments?requesting_user_id=${encodeURIComponent(
+      requestingUserId,
+    )}`,
+  );
+
+  const body = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      body.error ?? "Could not load reimbursement attachments",
+    );
+  }
+
+  return body;
 }

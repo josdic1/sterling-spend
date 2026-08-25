@@ -429,3 +429,164 @@
   color: var(--color-ink);
   font-size: var(--text-sm);
 }
+
+.admin-check-stub {
+  display: grid;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+  padding: var(--space-5);
+  border-radius: var(--radius-lg);
+  background: var(--color-card);
+  box-shadow: var(--shadow-card);
+}
+
+.admin-check-stub-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.admin-check-stub-heading > svg {
+  flex: 0 0 auto;
+  color: var(--color-primary);
+}
+
+.admin-check-stub-heading > div {
+  display: grid;
+  gap: 4px;
+}
+
+.admin-check-stub-heading strong {
+  font-size: var(--text-lg);
+}
+
+.admin-check-stub-heading span {
+  color: var(--color-subtle);
+  font-size: var(--text-sm);
+  line-height: 1.4;
+}
+
+.admin-check-stub-files {
+  overflow: hidden;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+}
+
+.admin-check-stub-file {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-page);
+}
+
+.admin-check-stub-file + .admin-check-stub-file {
+  border-top: 1px solid var(--color-line);
+}
+
+.admin-check-stub-file > svg:first-child {
+  color: var(--color-subtle);
+}
+
+.admin-check-stub-file > svg:last-child {
+  color: var(--color-green);
+}
+
+.admin-check-stub-file > div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.admin-check-stub-file strong {
+  overflow: hidden;
+  color: var(--color-ink);
+  font-size: var(--text-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-check-stub-file span {
+  color: var(--color-subtle);
+  font-size: var(--text-xs);
+}
+
+.admin-check-stub-upload {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-3);
+}
+
+.admin-check-stub-upload input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+.admin-check-stub-upload label {
+  min-width: 0;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  background: var(--color-page);
+  color: var(--color-ink);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.admin-check-stub-upload label svg {
+  flex: 0 0 auto;
+  color: var(--color-primary);
+}
+
+.admin-check-stub-upload button {
+  min-height: 48px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.admin-check-stub-upload button:disabled {
+  background: var(--color-line);
+  color: var(--color-subtle);
+}
+
+.admin-check-stub-help {
+  margin-top: -6px;
+  color: var(--color-subtle);
+  font-size: var(--text-xs);
+}
+
+.admin-check-stub-error {
+  margin: 0;
+  padding: 11px 13px;
+  border-radius: var(--radius-md);
+  background: var(--color-orange-soft);
+  color: var(--color-orange);
+  font-size: var(--text-sm);
+  font-weight: 700;
+}
+
+@media (max-width: 759px) {
+  .admin-check-stub-upload {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-check-stub-upload button {
+    width: 100%;
+  }
+}

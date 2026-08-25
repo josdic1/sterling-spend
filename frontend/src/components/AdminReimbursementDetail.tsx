@@ -1,20 +1,30 @@
-import { useCallback, useEffect, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   ArrowLeft,
   Banknote,
   Car,
   CheckCircle2,
+  FileText,
   ReceiptText,
+  Upload,
 } from "lucide-react";
 import { format } from "date-fns";
 import {
   getAdminReimbursementDetail,
+  getReimbursementAttachments,
   payReimbursement,
   reviewReimbursement,
   TEST_ADMIN_ID,
   updateApprovedExpenseAmount,
   updateApprovedMileage,
+  uploadCheckStub,
   type AdminReimbursementDetail as AdminReimbursementDetailData,
+  type ReimbursementAttachment,
 } from "../lib/api";
 import "./AdminReimbursementDetail.css";
 
@@ -38,6 +48,18 @@ function formatMonth(year: number, month: number) {
   );
 }
 
+function formatAttachmentDate(value: string) {
+  return format(new Date(value), "MMM d, yyyy");
+}
+
+function formatFileSize(value: number) {
+  if (value < 1024 * 1024) {
+    return `${Math.max(1, Math.round(value / 1024))} KB`;
+  }
+
+  return `${(value / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export default function AdminReimbursementDetail({
   reimbursementId,
   onBack,
@@ -54,15 +76,29 @@ export default function AdminReimbursementDetail({
     Record<string, string>
   >({});
 
+  const [attachments, setAttachments] = useState<
+    ReimbursementAttachment[]
+  >([]);
+
   const [checkNumber, setCheckNumber] = useState("");
   const [confirmingPayment, setConfirmingPayment] =
     useState(false);
 
+  const [selectedCheckStub, setSelectedCheckStub] =
+    useState<File | null>(null);
+
+  const checkStubInputRef =
+    useRef<HTMLInputElement | null>(null);
+
   const [savingId, setSavingId] = useState("");
   const [reviewing, setReviewing] = useState(false);
   const [paying, setPaying] = useState(false);
+  const [uploadingCheckStub, setUploadingCheckStub] =
+    useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [attachmentError, setAttachmentError] =
+    useState("");
 
   const loadDetail = useCallback(async () => {
     try {
@@ -109,13 +145,32 @@ export default function AdminReimbursementDetail({
     }
   }, [reimbursementId]);
 
+  const loadAttachments = useCallback(async () => {
+    try {
+      setAttachmentError("");
+
+      const result =
+        await getReimbursementAttachments(
+          reimbursementId,
+          TEST_ADMIN_ID,
+        );
+
+      setAttachments(result);
+    } catch (caughtError) {
+      setAttachmentError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Could not load attachments.",
+      );
+    }
+  }, [reimbursementId]);
+
   useEffect(() => {
     void loadDetail();
-  }, [loadDetail]);
+    void loadAttachments();
+  }, [loadDetail, loadAttachments]);
 
-  async function saveExpense(
-    expenseId: string,
-  ) {
+  async function saveExpense(expenseId: string) {
     const value = expenseValues[expenseId];
 
     if (value === undefined || value === "") {
@@ -144,9 +199,7 @@ export default function AdminReimbursementDetail({
     }
   }
 
-  async function saveMileage(
-    mileageId: string,
-  ) {
+  async function saveMileage(mileageId: string) {
     const value = mileageValues[mileageId];
 
     if (value === undefined || value === "") {
@@ -220,6 +273,7 @@ export default function AdminReimbursementDetail({
 
       setConfirmingPayment(false);
       await loadDetail();
+      await loadAttachments();
     } catch (caughtError) {
       setError(
         caughtError instanceof Error
@@ -228,6 +282,39 @@ export default function AdminReimbursementDetail({
       );
     } finally {
       setPaying(false);
+    }
+  }
+
+  async function handleCheckStubUpload() {
+    if (!detail || !selectedCheckStub) {
+      return;
+    }
+
+    try {
+      setUploadingCheckStub(true);
+      setAttachmentError("");
+
+      await uploadCheckStub(
+        detail.id,
+        TEST_ADMIN_ID,
+        selectedCheckStub,
+      );
+
+      setSelectedCheckStub(null);
+
+      if (checkStubInputRef.current) {
+        checkStubInputRef.current.value = "";
+      }
+
+      await loadAttachments();
+    } catch (caughtError) {
+      setAttachmentError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Could not upload check stub.",
+      );
+    } finally {
+      setUploadingCheckStub(false);
     }
   }
 
@@ -252,6 +339,11 @@ export default function AdminReimbursementDetail({
   }
 
   const editable = detail.status !== "paid";
+
+  const checkStubs = attachments.filter(
+    (attachment) =>
+      attachment.purpose === "check_stub",
+  );
 
   return (
     <main className="admin-detail">
@@ -309,9 +401,7 @@ export default function AdminReimbursementDetail({
       </section>
 
       {error && (
-        <p className="admin-detail-error">
-          {error}
-        </p>
+        <p className="admin-detail-error">{error}</p>
       )}
 
       <section className="admin-detail-section">
@@ -441,9 +531,7 @@ export default function AdminReimbursementDetail({
                 key={entry.id}
               >
                 <div className="admin-detail-row-copy">
-                  <strong>
-                    {entry.event_name}
-                  </strong>
+                  <strong>{entry.event_name}</strong>
 
                   <span>
                     {entry.event_number}
@@ -560,7 +648,10 @@ export default function AdminReimbursementDetail({
 
           {confirmingPayment ? (
             <div className="admin-payment-confirm">
-              <strong>Mark this reimbursement paid?</strong>
+              <strong>
+                Mark this reimbursement paid?
+              </strong>
+
               <span>
                 Paid reimbursements are permanently locked.
               </span>
@@ -605,16 +696,117 @@ export default function AdminReimbursementDetail({
       )}
 
       {detail.status === "paid" && (
-        <div className="admin-detail-reviewed">
-          <CheckCircle2 size={20} />
+        <>
+          <div className="admin-detail-reviewed">
+            <CheckCircle2 size={20} />
 
-          <div>
-            <strong>Reimbursement paid</strong>
-            <span>
-              Check #{detail.check_number}
-            </span>
+            <div>
+              <strong>Reimbursement paid</strong>
+              <span>
+                Check #{detail.check_number}
+              </span>
+            </div>
           </div>
-        </div>
+
+          <section className="admin-check-stub">
+            <div className="admin-check-stub-heading">
+              <FileText size={22} />
+
+              <div>
+                <strong>QuickBooks check stub</strong>
+                <span>
+                  Attach the check stub to complete the
+                  reimbursement packet.
+                </span>
+              </div>
+            </div>
+
+            {checkStubs.length > 0 && (
+              <div className="admin-check-stub-files">
+                {checkStubs.map((attachment) => (
+                  <div
+                    className="admin-check-stub-file"
+                    key={attachment.id}
+                  >
+                    <FileText size={18} />
+
+                    <div>
+                      <strong>
+                        {attachment.file_name}
+                      </strong>
+
+                      <span>
+                        {formatAttachmentDate(
+                          attachment.created_at,
+                        )}
+                        {" · "}
+                        {formatFileSize(
+                          Number(
+                            attachment.file_size_bytes,
+                          ),
+                        )}
+                      </span>
+                    </div>
+
+                    <CheckCircle2 size={18} />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="admin-check-stub-upload">
+              <input
+                ref={checkStubInputRef}
+                id="check-stub-file"
+                type="file"
+                accept="image/jpeg,image/png,image/webp,application/pdf"
+                onChange={(event) => {
+                  setSelectedCheckStub(
+                    event.target.files?.[0] ?? null,
+                  );
+                  setAttachmentError("");
+                }}
+              />
+
+              <label htmlFor="check-stub-file">
+                <Upload size={18} />
+
+                {selectedCheckStub
+                  ? selectedCheckStub.name
+                  : checkStubs.length > 0
+                    ? "Choose another check stub"
+                    : "Choose check stub"}
+              </label>
+
+              <button
+                type="button"
+                disabled={
+                  !selectedCheckStub ||
+                  uploadingCheckStub
+                }
+                onClick={() => {
+                  void handleCheckStubUpload();
+                }}
+              >
+                {uploadingCheckStub
+                  ? "Uploading…"
+                  : checkStubs.length > 0
+                    ? "Add check stub"
+                    : "Upload check stub"}
+              </button>
+            </div>
+
+            <span className="admin-check-stub-help">
+              PDF, JPEG, PNG, or WebP.
+            </span>
+
+            {attachmentError && (
+              <p className="admin-check-stub-error">
+                {attachmentError}
+              </p>
+            )}
+          </section>
+        </>
       )}
     </main>
   );

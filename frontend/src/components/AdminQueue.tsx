@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import {
+  CheckCircle2,
   ChevronRight,
   ClipboardCheck,
   Monitor,
@@ -8,6 +9,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import {
+  getAdminPaidReimbursements,
   getAdminReimbursementQueue,
   TEST_ADMIN_ID,
   type AdminReimbursementQueueItem,
@@ -20,6 +22,7 @@ type AdminQueueProps = {
 };
 
 type AdminViewMode = "mobile" | "web";
+type AdminQueueSection = "review" | "paid";
 
 function formatMoney(value: string | number) {
   return new Intl.NumberFormat("en-US", {
@@ -35,34 +38,57 @@ function formatMonth(year: number, month: number) {
   );
 }
 
+function formatPaidDate(value: string | null) {
+  if (!value) {
+    return "";
+  }
+
+  return format(new Date(value), "MMM d, yyyy");
+}
+
 export default function AdminQueue({
   onClose,
   onOpenReimbursement,
 }: AdminQueueProps) {
-  const [items, setItems] = useState<
+  const [reviewItems, setReviewItems] = useState<
     AdminReimbursementQueueItem[]
   >([]);
+
+  const [paidItems, setPaidItems] = useState<
+    AdminReimbursementQueueItem[]
+  >([]);
+
+  const [section, setSection] =
+    useState<AdminQueueSection>("review");
+
   const [viewMode, setViewMode] =
     useState<AdminViewMode>(() =>
       window.matchMedia("(min-width: 760px)").matches
         ? "web"
         : "mobile",
     );
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    async function loadQueue() {
+    async function loadReimbursements() {
       try {
         setLoading(true);
         setError("");
 
-        const result =
-          await getAdminReimbursementQueue(
-            TEST_ADMIN_ID,
-          );
+        const [queueResult, paidResult] =
+          await Promise.all([
+            getAdminReimbursementQueue(
+              TEST_ADMIN_ID,
+            ),
+            getAdminPaidReimbursements(
+              TEST_ADMIN_ID,
+            ),
+          ]);
 
-        setItems(result);
+        setReviewItems(queueResult);
+        setPaidItems(paidResult);
       } catch (caughtError) {
         setError(
           caughtError instanceof Error
@@ -74,8 +100,13 @@ export default function AdminQueue({
       }
     }
 
-    void loadQueue();
+    void loadReimbursements();
   }, []);
+
+  const items =
+    section === "review"
+      ? reviewItems
+      : paidItems;
 
   return (
     <main
@@ -96,6 +127,33 @@ export default function AdminQueue({
           <X size={21} />
         </button>
       </header>
+
+      <nav
+        className="admin-queue-sections"
+        aria-label="Reimbursement status"
+      >
+        <button
+          type="button"
+          className={
+            section === "review" ? "active" : ""
+          }
+          onClick={() => setSection("review")}
+        >
+          Needs review
+          <span>{reviewItems.length}</span>
+        </button>
+
+        <button
+          type="button"
+          className={
+            section === "paid" ? "active" : ""
+          }
+          onClick={() => setSection("paid")}
+        >
+          Paid
+          <span>{paidItems.length}</span>
+        </button>
+      </nav>
 
       <div className="admin-view-toggle">
         <button
@@ -131,11 +189,23 @@ export default function AdminQueue({
         </div>
       ) : items.length === 0 ? (
         <div className="admin-queue-message">
-          <ClipboardCheck size={28} />
-          <strong>Nothing waiting for review</strong>
-          <span>
-            Submitted reimbursements will appear here.
-          </span>
+          {section === "review" ? (
+            <>
+              <ClipboardCheck size={28} />
+              <strong>Nothing waiting for review</strong>
+              <span>
+                Submitted reimbursements will appear here.
+              </span>
+            </>
+          ) : (
+            <>
+              <CheckCircle2 size={28} />
+              <strong>No paid reimbursements yet</strong>
+              <span>
+                Completed reimbursements will appear here.
+              </span>
+            </>
+          )}
         </div>
       ) : viewMode === "mobile" ? (
         <section className="admin-queue-cards">
@@ -166,9 +236,18 @@ export default function AdminQueue({
 
               <div className="admin-queue-card-stats">
                 <div>
-                  <span>Claimed</span>
+                  <span>
+                    {section === "paid"
+                      ? "Approved"
+                      : "Claimed"}
+                  </span>
+
                   <strong>
-                    {formatMoney(item.claimed_total)}
+                    {formatMoney(
+                      section === "paid"
+                        ? item.approved_total
+                        : item.claimed_total,
+                    )}
                   </strong>
                 </div>
 
@@ -184,7 +263,14 @@ export default function AdminQueue({
               </div>
 
               <div className="admin-queue-card-footer">
-                <span>{item.employee_email}</span>
+                <span>
+                  {section === "paid"
+                    ? `Check #${item.check_number ?? "—"} · ${formatPaidDate(
+                        item.paid_at,
+                      )}`
+                    : item.employee_email}
+                </span>
+
                 <ChevronRight size={19} />
               </div>
             </button>
@@ -202,6 +288,9 @@ export default function AdminQueue({
                 <th>Mileage</th>
                 <th>Claimed</th>
                 <th>Approved</th>
+                {section === "paid" && (
+                  <th>Check</th>
+                )}
                 <th />
               </tr>
             </thead>
@@ -236,6 +325,12 @@ export default function AdminQueue({
                   <td>
                     {formatMoney(item.approved_total)}
                   </td>
+
+                  {section === "paid" && (
+                    <td>
+                      #{item.check_number ?? "—"}
+                    </td>
+                  )}
 
                   <td>
                     <button

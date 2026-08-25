@@ -107,6 +107,100 @@ router.get("/admin/queue", async (req, res) => {
   return res.json(queueResult.rows);
 });
 
+router.get("/admin/paid", async (req, res) => {
+  const parsed = requestingUserQuerySchema.safeParse(req.query);
+
+  if (!parsed.success) {
+    return res.status(400).json({
+      error: "Valid requesting_user_id is required",
+    });
+  }
+
+  const { requesting_user_id } = parsed.data;
+
+  const adminResult = await db.query(
+    `
+      SELECT id
+      FROM users
+      WHERE id = $1
+        AND role = 'admin'
+        AND is_active = TRUE
+    `,
+    [requesting_user_id],
+  );
+
+  if (adminResult.rows.length === 0) {
+    return res.status(403).json({
+      error: "Only an active admin can view paid reimbursements",
+    });
+  }
+
+  const paidResult = await db.query(
+    `
+      SELECT
+        r.id,
+        r.user_id,
+        u.name AS employee_name,
+        u.email AS employee_email,
+        r.year,
+        r.month,
+        r.status,
+        r.submitted_at,
+        r.reviewed_at,
+        r.check_number,
+        r.paid_at,
+
+        (
+          SELECT COUNT(*)
+          FROM expenses e
+          WHERE e.reimbursement_id = r.id
+        ) AS expense_count,
+
+        (
+          SELECT COUNT(*)
+          FROM mileage_entries me
+          WHERE me.reimbursement_id = r.id
+        ) AS mileage_count,
+
+        COALESCE((
+          SELECT SUM(e.claimed_amount)
+          FROM expenses e
+          WHERE e.reimbursement_id = r.id
+        ), 0)
+        +
+        COALESCE((
+          SELECT SUM(me.claimed_miles * mr.rate_per_mile)
+          FROM mileage_entries me
+          JOIN mileage_rates mr
+            ON mr.id = me.mileage_rate_id
+          WHERE me.reimbursement_id = r.id
+        ), 0) AS claimed_total,
+
+        COALESCE((
+          SELECT SUM(e.approved_amount)
+          FROM expenses e
+          WHERE e.reimbursement_id = r.id
+        ), 0)
+        +
+        COALESCE((
+          SELECT SUM(me.approved_miles * mr.rate_per_mile)
+          FROM mileage_entries me
+          JOIN mileage_rates mr
+            ON mr.id = me.mileage_rate_id
+          WHERE me.reimbursement_id = r.id
+        ), 0) AS approved_total
+
+      FROM reimbursements r
+      JOIN users u
+        ON u.id = r.user_id
+      WHERE r.status = 'paid'
+      ORDER BY r.paid_at DESC, r.created_at DESC
+    `,
+  );
+
+  return res.json(paidResult.rows);
+});
+
 router.get("/current/:userId", async (req, res) => {
   const { userId } = req.params;
 
