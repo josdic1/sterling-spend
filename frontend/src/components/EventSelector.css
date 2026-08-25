@@ -1,0 +1,138 @@
+.event-selector {
+  min-height: 100vh;
+  padding: 20px 20px 40px;
+  background: var(--color-page);
+}
+
+.event-selector-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+.event-selector-header > div {
+  display: grid;
+  gap: 3px;
+}
+
+.event-selector-header span {
+  color: var(--color-subtle);
+  font-size: var(--text-xs);
+  font-weight: 800;
+  letter-spacing: 0.07em;
+}
+
+.event-selector-header h1 {
+  margin: 0;
+  font-size: 28px;
+  line-height: 1.1;
+  letter-spacing: -0.035em;
+}
+
+.event-selector-close {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: var(--color-card);
+  color: var(--color-ink);
+  box-shadow: var(--shadow-card);
+}
+
+.event-selector-list {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.event-selector-card {
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--color-card);
+  box-shadow: var(--shadow-card);
+}
+
+.event-selector-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.event-selector-card-top > div {
+  min-width: 0;
+}
+
+.event-selector-card-top span {
+  color: var(--color-subtle);
+  font-size: var(--text-xs);
+  font-weight: 800;
+}
+
+.event-selector-card-top h2 {
+  margin: 3px 0 0;
+  font-size: 18px;
+  letter-spacing: -0.02em;
+}
+
+.event-selector-card-top > strong {
+  flex: 0 0 auto;
+  color: var(--color-subtle);
+  font-size: var(--text-sm);
+}
+
+.event-selector-card p {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: var(--space-3) 0 var(--space-4);
+  color: var(--color-subtle);
+  font-size: var(--text-sm);
+}
+
+.event-selector-card button {
+  width: 100%;
+  min-height: 48px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.event-selector-card button:hover:not(:disabled) {
+  background: var(--color-primary-strong);
+}
+
+.event-selector-message {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 48px 20px;
+  border-radius: var(--radius-lg);
+  background: var(--color-card);
+  color: var(--color-subtle);
+  box-shadow: var(--shadow-card);
+  text-align: center;
+}
+
+.event-selector-message strong {
+  color: var(--color-ink);
+}
+
+.event-selector-message span {
+  font-size: var(--text-sm);
+}
+
+.event-selector-error {
+  margin: var(--space-4) 0 0;
+  padding: 11px 13px;
+  border-radius: var(--radius-md);
+  background: var(--color-orange-soft);
+  color: var(--color-orange);
+  font-size: var(--text-sm);
+  font-weight: 700;
+}

@@ -234,3 +234,27 @@ export async function createManualMileage(input: {
 
   return body;
 }
+
+export async function activateEvent(
+  eventId: string,
+  userId: string,
+): Promise<void> {
+  const response = await fetch(
+    `/api/events/${eventId}/activate`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        user_id: userId,
+      }),
+    },
+  );
+
+  const body = await response.json();
+
+  if (!response.ok) {
+    throw new Error(body.error ?? "Could not activate event");
+  }
+}

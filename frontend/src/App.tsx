@@ -20,6 +20,7 @@ import {
   Route as RouteIcon,
 } from "lucide-react";
 import { format } from "date-fns";
+import EventSelector from "./components/EventSelector";
 import MileageCapture from "./components/MileageCapture";
 import ReceiptCapture from "./components/ReceiptCapture";
 import {
@@ -56,6 +57,8 @@ function EmployeeHome() {
   const [captureMode, setCaptureMode] =
     useState<CaptureMode>("receipt");
   const [showMileage, setShowMileage] = useState(false);
+  const [showEventSelector, setShowEventSelector] =
+    useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -116,6 +119,11 @@ function EmployeeHome() {
     await loadHome();
   }
 
+  async function handleEventActivated() {
+    setShowEventSelector(false);
+    await loadHome();
+  }
+
   if (receiptFile) {
     return (
       <div className="employee-app">
@@ -138,6 +146,19 @@ function EmployeeHome() {
           onCancel={() => setShowMileage(false)}
           onSaved={() => {
             void handleMileageSaved();
+          }}
+        />
+      </div>
+    );
+  }
+
+  if (showEventSelector) {
+    return (
+      <div className="employee-app">
+        <EventSelector
+          onCancel={() => setShowEventSelector(false)}
+          onActivated={() => {
+            void handleEventActivated();
           }}
         />
       </div>
@@ -209,10 +230,14 @@ function EmployeeHome() {
             </div>
           </section>
         ) : (
-          <section className="no-active-event">
+          <button
+            type="button"
+            className="no-active-event"
+            onClick={() => setShowEventSelector(true)}
+          >
             <span>No active event</span>
             <strong>Select today’s event to begin</strong>
-          </section>
+          </button>
         )}
 
         <section className="capture-section">
@@ -248,6 +273,7 @@ function EmployeeHome() {
               onClick={() => setShowMileage(true)}
             >
               <Car size={23} />
+
               <span>
                 <strong>Mileage</strong>
                 <small>Log a trip</small>
@@ -260,6 +286,7 @@ function EmployeeHome() {
               onClick={() => openCapture("toll")}
             >
               <RouteIcon size={23} />
+
               <span>
                 <strong>Toll</strong>
                 <small>Add receipt</small>
