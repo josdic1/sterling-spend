@@ -43,6 +43,7 @@ export default function ReimbursementReview({
   const [error, setError] = useState("");
 
   const canSubmit = reimbursement.status === "open";
+  const isPaid = reimbursement.status === "paid";
 
   async function handleSubmit() {
     try {
@@ -66,11 +67,51 @@ export default function ReimbursementReview({
     }
   }
 
+  function renderFinalStatus() {
+    if (reimbursement.status === "paid") {
+      return (
+        <div className="reimbursement-final-status paid">
+          <CheckCircle2 size={20} />
+
+          <strong>
+            Paid
+            {reimbursement.check_number
+              ? ` · Check #${reimbursement.check_number}`
+              : ""}
+          </strong>
+        </div>
+      );
+    }
+
+    if (reimbursement.status === "reviewed") {
+      return (
+        <div className="reimbursement-final-status reviewed">
+          <CheckCircle2 size={20} />
+
+          <strong>Reviewed · Awaiting payment</strong>
+        </div>
+      );
+    }
+
+    return (
+      <div className="reimbursement-final-status submitted">
+        <CheckCircle2 size={20} />
+
+        <strong>Submitted for review</strong>
+      </div>
+    );
+  }
+
   return (
-    <main className="reimbursement-review">
+    <main
+      className={`reimbursement-review ${
+        isPaid ? "reimbursement-review-paid" : ""
+      }`}
+    >
       <header className="reimbursement-review-header">
         <div>
           <span>REIMBURSEMENT</span>
+
           <h1>
             {formatMonth(
               reimbursement.year,
@@ -91,6 +132,7 @@ export default function ReimbursementReview({
 
       <section className="reimbursement-review-total">
         <span>CLAIMED TOTAL</span>
+
         <strong>
           {formatMoney(
             reimbursement.totals.claimed_total,
@@ -210,6 +252,7 @@ export default function ReimbursementReview({
 
             <div>
               <strong>Ready to submit?</strong>
+
               <span>
                 After submitting, you can no longer add
                 receipts, mileage, or tolls to this month.
@@ -250,10 +293,7 @@ export default function ReimbursementReview({
           </button>
         )
       ) : (
-        <div className="reimbursement-locked">
-          <CheckCircle2 size={20} />
-          This reimbursement has been submitted.
-        </div>
+        renderFinalStatus()
       )}
     </main>
   );

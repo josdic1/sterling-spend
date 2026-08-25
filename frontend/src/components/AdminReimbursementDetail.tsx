@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   ArrowLeft,
+  Banknote,
   Car,
   CheckCircle2,
   ReceiptText,
@@ -8,6 +9,7 @@ import {
 import { format } from "date-fns";
 import {
   getAdminReimbursementDetail,
+  payReimbursement,
   reviewReimbursement,
   TEST_ADMIN_ID,
   updateApprovedExpenseAmount,
@@ -52,8 +54,13 @@ export default function AdminReimbursementDetail({
     Record<string, string>
   >({});
 
+  const [checkNumber, setCheckNumber] = useState("");
+  const [confirmingPayment, setConfirmingPayment] =
+    useState(false);
+
   const [savingId, setSavingId] = useState("");
   const [reviewing, setReviewing] = useState(false);
+  const [paying, setPaying] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -87,6 +94,10 @@ export default function AdminReimbursementDetail({
           ]),
         ),
       );
+
+      if (result.check_number) {
+        setCheckNumber(result.check_number);
+      }
     } catch (caughtError) {
       setError(
         caughtError instanceof Error
@@ -188,6 +199,35 @@ export default function AdminReimbursementDetail({
       );
     } finally {
       setReviewing(false);
+    }
+  }
+
+  async function handlePay() {
+    if (!detail || !checkNumber.trim()) {
+      setError("Check number is required.");
+      return;
+    }
+
+    try {
+      setPaying(true);
+      setError("");
+
+      await payReimbursement(
+        detail.id,
+        TEST_ADMIN_ID,
+        checkNumber.trim(),
+      );
+
+      setConfirmingPayment(false);
+      await loadDetail();
+    } catch (caughtError) {
+      setError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Could not mark reimbursement paid.",
+      );
+    } finally {
+      setPaying(false);
     }
   }
 
@@ -474,7 +514,7 @@ export default function AdminReimbursementDetail({
         </div>
       </section>
 
-      {detail.status === "submitted" ? (
+      {detail.status === "submitted" && (
         <button
           type="button"
           className="admin-detail-review"
@@ -488,10 +528,92 @@ export default function AdminReimbursementDetail({
             ? "Marking reviewed…"
             : "Mark reimbursement reviewed"}
         </button>
-      ) : (
+      )}
+
+      {detail.status === "reviewed" && (
+        <section className="admin-payment">
+          <div className="admin-payment-heading">
+            <Banknote size={22} />
+
+            <div>
+              <strong>Record payment</strong>
+              <span>
+                Enter the QuickBooks check number after
+                the reimbursement has been paid.
+              </span>
+            </div>
+          </div>
+
+          <label className="admin-payment-field">
+            <span>Check number</span>
+
+            <input
+              type="text"
+              inputMode="numeric"
+              placeholder="e.g. 10482"
+              value={checkNumber}
+              onChange={(event) =>
+                setCheckNumber(event.target.value)
+              }
+            />
+          </label>
+
+          {confirmingPayment ? (
+            <div className="admin-payment-confirm">
+              <strong>Mark this reimbursement paid?</strong>
+              <span>
+                Paid reimbursements are permanently locked.
+              </span>
+
+              <div>
+                <button
+                  type="button"
+                  disabled={paying}
+                  onClick={() =>
+                    setConfirmingPayment(false)
+                  }
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  className="admin-payment-confirm-pay"
+                  disabled={paying}
+                  onClick={() => {
+                    void handlePay();
+                  }}
+                >
+                  {paying ? "Saving…" : "Mark paid"}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="admin-detail-pay"
+              disabled={!checkNumber.trim()}
+              onClick={() =>
+                setConfirmingPayment(true)
+              }
+            >
+              <Banknote size={19} />
+              Mark reimbursement paid
+            </button>
+          )}
+        </section>
+      )}
+
+      {detail.status === "paid" && (
         <div className="admin-detail-reviewed">
           <CheckCircle2 size={20} />
-          Reimbursement reviewed
+
+          <div>
+            <strong>Reimbursement paid</strong>
+            <span>
+              Check #{detail.check_number}
+            </span>
+          </div>
         </div>
       )}
     </main>

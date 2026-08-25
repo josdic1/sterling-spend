@@ -62,6 +62,7 @@
 }
 
 .reimbursement-review-total > strong {
+  color: var(--color-ink);
   font-size: 30px;
   letter-spacing: -0.04em;
 }
@@ -108,6 +109,7 @@
 
 .reimbursement-review-list h2 {
   margin: 0 0 var(--space-3);
+  color: var(--color-ink);
   font-size: var(--text-lg);
 }
 
@@ -144,6 +146,7 @@
 
 .reimbursement-review-row > div > strong {
   overflow: hidden;
+  color: var(--color-ink);
   font-size: 13.5px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -159,6 +162,7 @@
 
 .reimbursement-review-row > strong {
   flex: 0 0 auto;
+  color: var(--color-ink);
   font-size: 13.5px;
 }
 
@@ -248,14 +252,65 @@
   font-weight: 700;
 }
 
-.reimbursement-locked {
+.reimbursement-final-status {
   display: flex;
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-4);
   border-radius: var(--radius-lg);
+  font-size: var(--text-sm);
+}
+
+.reimbursement-final-status.paid {
   background: var(--color-green-soft);
   color: var(--color-green);
+}
+
+.reimbursement-final-status.reviewed {
+  background: var(--color-blue-soft);
+  color: var(--color-blue);
+}
+
+.reimbursement-final-status.submitted {
+  background: var(--color-gold-soft);
+  color: var(--color-gold);
+}
+
+.reimbursement-final-status strong {
   font-size: var(--text-sm);
   font-weight: 800;
+}
+
+/* Paid = historical/read-only. Softer surfaces, readable content. */
+
+.reimbursement-review-paid .reimbursement-review-total,
+.reimbursement-review-paid .reimbursement-review-counts > div,
+.reimbursement-review-paid .reimbursement-review-row,
+.reimbursement-review-paid .reimbursement-review-empty {
+  background: #fbfcfd;
+  box-shadow: none;
+}
+
+.reimbursement-review-paid
+  .reimbursement-review-row
+  + .reimbursement-review-row {
+  border-top-color: #edf0f4;
+}
+
+.reimbursement-review-paid .reimbursement-review-counts svg {
+  color: #8ecbd3;
+}
+
+.reimbursement-review-paid .reimbursement-review-list h2 {
+  color: #39414d;
+}
+
+.reimbursement-review-paid
+  .reimbursement-review-row
+  > div
+  > strong,
+.reimbursement-review-paid .reimbursement-review-row > strong,
+.reimbursement-review-paid .reimbursement-review-total > strong,
+.reimbursement-review-paid .reimbursement-review-counts strong {
+  color: var(--color-ink);
 }

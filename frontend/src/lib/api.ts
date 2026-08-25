@@ -488,3 +488,31 @@ export async function reviewReimbursement(
     );
   }
 }
+
+export async function payReimbursement(
+  reimbursementId: string,
+  adminUserId: string,
+  checkNumber: string,
+): Promise<void> {
+  const response = await fetch(
+    `/api/reimbursements/${reimbursementId}/pay`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        paid_by_user_id: adminUserId,
+        check_number: checkNumber,
+      }),
+    },
+  );
+
+  const body = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      body.error ?? "Could not mark reimbursement paid",
+    );
+  }
+}
