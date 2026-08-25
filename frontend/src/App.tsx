@@ -30,6 +30,8 @@ import {
   type CurrentReimbursement,
 } from "./lib/api";
 
+type CaptureMode = "receipt" | "toll";
+
 function formatMoney(value: string | number) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -51,6 +53,8 @@ function EmployeeHome() {
     useState<ActiveEvent | null>(null);
   const [receiptFile, setReceiptFile] =
     useState<File | null>(null);
+  const [captureMode, setCaptureMode] =
+    useState<CaptureMode>("receipt");
   const [showMileage, setShowMileage] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -79,6 +83,11 @@ function EmployeeHome() {
     void loadHome();
   }, [loadHome]);
 
+  function openCapture(mode: CaptureMode) {
+    setCaptureMode(mode);
+    receiptInputRef.current?.click();
+  }
+
   function handleReceiptSelected(
     event: React.ChangeEvent<HTMLInputElement>,
   ) {
@@ -93,7 +102,13 @@ function EmployeeHome() {
 
   async function handleReceiptSaved() {
     setReceiptFile(null);
+    setCaptureMode("receipt");
     await loadHome();
+  }
+
+  function handleReceiptCancel() {
+    setReceiptFile(null);
+    setCaptureMode("receipt");
   }
 
   async function handleMileageSaved() {
@@ -106,7 +121,8 @@ function EmployeeHome() {
       <div className="employee-app">
         <ReceiptCapture
           file={receiptFile}
-          onCancel={() => setReceiptFile(null)}
+          mode={captureMode}
+          onCancel={handleReceiptCancel}
           onSaved={() => {
             void handleReceiptSaved();
           }}
@@ -213,7 +229,7 @@ function EmployeeHome() {
             type="button"
             className="receipt-action"
             disabled={!canAdd}
-            onClick={() => receiptInputRef.current?.click()}
+            onClick={() => openCapture("receipt")}
           >
             <span className="receipt-icon">
               <Camera size={30} />
@@ -238,7 +254,11 @@ function EmployeeHome() {
               </span>
             </button>
 
-            <button type="button" disabled={!canAdd}>
+            <button
+              type="button"
+              disabled={!canAdd}
+              onClick={() => openCapture("toll")}
+            >
               <RouteIcon size={23} />
               <span>
                 <strong>Toll</strong>

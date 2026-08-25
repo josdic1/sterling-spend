@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Camera, X } from "lucide-react";
+import { Camera, Route as RouteIcon, X } from "lucide-react";
 import {
   createExpense,
   getExpenseCategories,
@@ -13,12 +13,14 @@ type ReceiptCaptureProps = {
   file: File;
   onCancel: () => void;
   onSaved: () => void;
+  mode?: "receipt" | "toll";
 };
 
 export default function ReceiptCapture({
   file,
   onCancel,
   onSaved,
+  mode = "receipt",
 }: ReceiptCaptureProps) {
   const [categories, setCategories] = useState<ExpenseCategory[]>([]);
   const [categoryId, setCategoryId] = useState("");
@@ -28,6 +30,8 @@ export default function ReceiptCapture({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
+  const isToll = mode === "toll";
+
   useEffect(() => {
     async function loadCategories() {
       try {
@@ -36,16 +40,29 @@ export default function ReceiptCapture({
 
         setCategories(active);
 
-        if (active.length > 0) {
-          setCategoryId(active[0].id);
+        if (active.length === 0) {
+          return;
         }
+
+        if (isToll) {
+          const tollCategory = active.find(
+            (category) => category.name === "Tolls",
+          );
+
+          if (tollCategory) {
+            setCategoryId(tollCategory.id);
+            return;
+          }
+        }
+
+        setCategoryId(active[0].id);
       } catch {
         setError("Could not load expense categories.");
       }
     }
 
     void loadCategories();
-  }, []);
+  }, [isToll]);
 
   async function handleSubmit(
     event: React.FormEvent<HTMLFormElement>,
@@ -81,7 +98,7 @@ export default function ReceiptCapture({
       setError(
         caughtError instanceof Error
           ? caughtError.message
-          : "Could not save receipt.",
+          : "Could not save expense.",
       );
     } finally {
       setSaving(false);
@@ -92,8 +109,8 @@ export default function ReceiptCapture({
     <main className="receipt-capture">
       <header className="receipt-capture-header">
         <div>
-          <span>NEW EXPENSE</span>
-          <h1>Receipt</h1>
+          <span>{isToll ? "NEW TOLL" : "NEW EXPENSE"}</span>
+          <h1>{isToll ? "Toll" : "Receipt"}</h1>
         </div>
 
         <button
@@ -108,11 +125,17 @@ export default function ReceiptCapture({
 
       <div className="receipt-file-card">
         <div className="receipt-file-icon">
-          <Camera size={24} />
+          {isToll ? (
+            <RouteIcon size={24} />
+          ) : (
+            <Camera size={24} />
+          )}
         </div>
 
         <div>
-          <strong>Receipt captured</strong>
+          <strong>
+            {isToll ? "Toll receipt captured" : "Receipt captured"}
+          </strong>
           <span>{file.name}</span>
         </div>
       </div>
@@ -139,31 +162,35 @@ export default function ReceiptCapture({
         </label>
 
         <label className="receipt-field">
-          <span>Vendor</span>
+          <span>{isToll ? "Road / Agency" : "Vendor"}</span>
 
           <input
             type="text"
-            placeholder="Restaurant Depot"
+            placeholder={
+              isToll ? "NJ Turnpike" : "Restaurant Depot"
+            }
             value={vendor}
             onChange={(event) => setVendor(event.target.value)}
           />
         </label>
 
-        <label className="receipt-field">
-          <span>Category</span>
+        {!isToll && (
+          <label className="receipt-field">
+            <span>Category</span>
 
-          <select
-            value={categoryId}
-            onChange={(event) => setCategoryId(event.target.value)}
-            required
-          >
-            {categories.map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.name}
-              </option>
-            ))}
-          </select>
-        </label>
+            <select
+              value={categoryId}
+              onChange={(event) => setCategoryId(event.target.value)}
+              required
+            >
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
 
         <label className="receipt-field">
           <span>Note</span>
@@ -183,9 +210,13 @@ export default function ReceiptCapture({
         <button
           type="submit"
           className="receipt-save"
-          disabled={saving || categories.length === 0}
+          disabled={saving || !categoryId}
         >
-          {saving ? "Saving…" : "Save expense"}
+          {saving
+            ? "Saving…"
+            : isToll
+              ? "Save toll"
+              : "Save expense"}
         </button>
       </form>
     </main>
