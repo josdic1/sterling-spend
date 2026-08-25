@@ -275,3 +275,29 @@ export async function endEventSession(
     throw new Error(body.error ?? "Could not end event");
   }
 }
+
+export async function submitReimbursement(
+  reimbursementId: string,
+  userId: string,
+): Promise<void> {
+  const response = await fetch(
+    `/api/reimbursements/${reimbursementId}/submit`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        submitted_by_user_id: userId,
+      }),
+    },
+  );
+
+  const body = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      body.error ?? "Could not submit reimbursement",
+    );
+  }
+}

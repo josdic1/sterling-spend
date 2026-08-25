@@ -24,6 +24,7 @@ import ActiveEventDetail from "./components/ActiveEventDetail";
 import EventSelector from "./components/EventSelector";
 import MileageCapture from "./components/MileageCapture";
 import ReceiptCapture from "./components/ReceiptCapture";
+import ReimbursementReview from "./components/ReimbursementReview";
 import {
   getActiveEvent,
   getCurrentReimbursement,
@@ -61,6 +62,8 @@ function EmployeeHome() {
   const [showEventSelector, setShowEventSelector] =
     useState(false);
   const [showActiveEvent, setShowActiveEvent] =
+    useState(false);
+  const [showReimbursement, setShowReimbursement] =
     useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -132,6 +135,11 @@ function EmployeeHome() {
     await loadHome();
   }
 
+  async function handleReimbursementSubmitted() {
+    setShowReimbursement(false);
+    await loadHome();
+  }
+
   if (receiptFile) {
     return (
       <div className="employee-app">
@@ -181,6 +189,20 @@ function EmployeeHome() {
           onCancel={() => setShowActiveEvent(false)}
           onEnded={() => {
             void handleEventEnded();
+          }}
+        />
+      </div>
+    );
+  }
+
+  if (showReimbursement && reimbursement) {
+    return (
+      <div className="employee-app">
+        <ReimbursementReview
+          reimbursement={reimbursement}
+          onCancel={() => setShowReimbursement(false)}
+          onSubmitted={() => {
+            void handleReimbursementSubmitted();
           }}
         />
       </div>
@@ -288,7 +310,9 @@ function EmployeeHome() {
 
             <span>
               <strong>Receipt</strong>
-              <small>Snap it now</small>
+              <small>
+                {canAdd ? "Snap it now" : "Month submitted"}
+              </small>
             </span>
           </button>
 
@@ -302,7 +326,9 @@ function EmployeeHome() {
 
               <span>
                 <strong>Mileage</strong>
-                <small>Log a trip</small>
+                <small>
+                  {canAdd ? "Log a trip" : "Locked"}
+                </small>
               </span>
             </button>
 
@@ -315,14 +341,20 @@ function EmployeeHome() {
 
               <span>
                 <strong>Toll</strong>
-                <small>Add receipt</small>
+                <small>
+                  {canAdd ? "Add receipt" : "Locked"}
+                </small>
               </span>
             </button>
           </div>
         </section>
 
         {reimbursement && (
-          <section className="month-summary">
+          <button
+            type="button"
+            className="month-summary"
+            onClick={() => setShowReimbursement(true)}
+          >
             <div>
               <span>
                 {formatMonth(
@@ -338,12 +370,16 @@ function EmployeeHome() {
               </strong>
             </div>
 
-            <span
-              className={`status-pill ${reimbursement.status}`}
-            >
-              {reimbursement.status}
-            </span>
-          </section>
+            <div className="month-summary-right">
+              <span
+                className={`status-pill ${reimbursement.status}`}
+              >
+                {reimbursement.status}
+              </span>
+
+              <ChevronRight size={19} />
+            </div>
+          </button>
         )}
 
         <section className="recent-section">
