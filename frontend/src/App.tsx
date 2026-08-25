@@ -21,6 +21,8 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import ActiveEventDetail from "./components/ActiveEventDetail";
+import AdminQueue from "./components/AdminQueue";
+import AdminReimbursementDetail from "./components/AdminReimbursementDetail";
 import EventSelector from "./components/EventSelector";
 import MileageCapture from "./components/MileageCapture";
 import ReceiptCapture from "./components/ReceiptCapture";
@@ -468,33 +470,29 @@ function EmployeeHome() {
   );
 }
 
-function AdminQueue() {
+function AdminWorkspace() {
   const navigate = useNavigate();
 
+  const [selectedReimbursementId, setSelectedReimbursementId] =
+    useState<string | null>(null);
+
+  if (selectedReimbursementId) {
+    return (
+      <AdminReimbursementDetail
+        reimbursementId={selectedReimbursementId}
+        onBack={() => setSelectedReimbursementId(null)}
+        onReviewed={() => setSelectedReimbursementId(null)}
+      />
+    );
+  }
+
   return (
-    <div className="admin-placeholder">
-      <header>
-        <button
-          type="button"
-          onClick={() => navigate("/")}
-        >
-          ← Employee
-        </button>
-      </header>
-
-      <main>
-        <p>CONTROLLER</p>
-        <h1>Reimbursements</h1>
-
-        <div className="recent-empty">
-          <ClipboardCheck size={26} />
-          <strong>Nothing waiting for review</strong>
-          <span>
-            Submitted reimbursements will appear here.
-          </span>
-        </div>
-      </main>
-    </div>
+    <AdminQueue
+      onClose={() => navigate("/")}
+      onOpenReimbursement={(reimbursementId) =>
+        setSelectedReimbursementId(reimbursementId)
+      }
+    />
   );
 }
 
@@ -502,7 +500,7 @@ function App() {
   return (
     <Routes>
       <Route path="/" element={<EmployeeHome />} />
-      <Route path="/admin" element={<AdminQueue />} />
+      <Route path="/admin" element={<AdminWorkspace />} />
       <Route
         path="*"
         element={<Navigate to="/" replace />}

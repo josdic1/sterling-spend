@@ -301,3 +301,190 @@ export async function submitReimbursement(
     );
   }
 }
+
+export const TEST_ADMIN_ID =
+  "3f07589b-c84d-4372-818a-69aee47ae002";
+
+export type AdminReimbursementQueueItem = {
+  id: string;
+  user_id: string;
+  employee_name: string;
+  employee_email: string;
+  year: number;
+  month: number;
+  status: "submitted" | "reviewed";
+  submitted_at: string | null;
+  reviewed_at: string | null;
+  check_number: string | null;
+  paid_at: string | null;
+  expense_count: string;
+  mileage_count: string;
+  claimed_total: string;
+  approved_total: string;
+};
+
+export async function getAdminReimbursementQueue(
+  adminUserId: string,
+): Promise<AdminReimbursementQueueItem[]> {
+  const response = await fetch(
+    `/api/reimbursements/admin/queue?requesting_user_id=${adminUserId}`,
+  );
+
+  const body = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      body.error ?? "Could not load reimbursement queue",
+    );
+  }
+
+  return body;
+}
+
+export type AdminExpense = {
+  id: string;
+  expense_date: string;
+  vendor: string | null;
+  description: string | null;
+  claimed_amount: string;
+  approved_amount: string;
+  category_id: string;
+  category_name: string;
+  event_id: string | null;
+  event_number: string | null;
+  event_name: string | null;
+};
+
+export type AdminMileageEntry = {
+  id: string;
+  trip_date: string;
+  source: "automatic" | "manual";
+  claimed_miles: string;
+  approved_miles: string;
+  mileage_rate_id: string;
+  rate_per_mile: string;
+  event_id: string;
+  event_number: string;
+  event_name: string;
+};
+
+export type AdminReimbursementDetail = {
+  id: string;
+  user_id: string;
+  employee_name: string;
+  employee_email: string;
+  year: number;
+  month: number;
+  status: "submitted" | "reviewed" | "paid";
+  submitted_at: string | null;
+  reviewed_at: string | null;
+  check_number: string | null;
+  paid_at: string | null;
+  totals: {
+    claimed_total: string;
+    approved_total: string;
+  };
+  expenses: AdminExpense[];
+  mileage: AdminMileageEntry[];
+};
+
+export async function getAdminReimbursementDetail(
+  reimbursementId: string,
+  adminUserId: string,
+): Promise<AdminReimbursementDetail> {
+  const response = await fetch(
+    `/api/reimbursements/${reimbursementId}?requesting_user_id=${adminUserId}`,
+  );
+
+  const body = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      body.error ?? "Could not load reimbursement",
+    );
+  }
+
+  return body;
+}
+
+export async function updateApprovedExpenseAmount(
+  expenseId: string,
+  approvedAmount: string,
+  adminUserId: string,
+): Promise<void> {
+  const response = await fetch(
+    `/api/expenses/${expenseId}/approved-amount`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        approved_amount: Number(approvedAmount),
+        changed_by_user_id: adminUserId,
+      }),
+    },
+  );
+
+  const body = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      body.error ?? "Could not update approved amount",
+    );
+  }
+}
+
+export async function updateApprovedMileage(
+  mileageId: string,
+  approvedMiles: string,
+  adminUserId: string,
+): Promise<void> {
+  const response = await fetch(
+    `/api/mileage/${mileageId}/approved-miles`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        approved_miles: Number(approvedMiles),
+        changed_by_user_id: adminUserId,
+      }),
+    },
+  );
+
+  const body = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      body.error ?? "Could not update approved mileage",
+    );
+  }
+}
+
+export async function reviewReimbursement(
+  reimbursementId: string,
+  adminUserId: string,
+): Promise<void> {
+  const response = await fetch(
+    `/api/reimbursements/${reimbursementId}/review`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        reviewed_by_user_id: adminUserId,
+      }),
+    },
+  );
+
+  const body = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      body.error ?? "Could not mark reimbursement reviewed",
+    );
+  }
+}
