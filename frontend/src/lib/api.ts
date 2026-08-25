@@ -54,6 +54,20 @@ export type ActiveEvent = {
   venue_address: string | null;
 };
 
+export type AssignedEvent = {
+  id: string;
+  event_number: string;
+  name: string;
+  event_date: string;
+  event_type: string | null;
+  venue_name: string | null;
+  venue_address: string | null;
+  client_name: string | null;
+  start_time: string | null;
+  end_time: string | null;
+  status: string;
+};
+
 export type ExpenseCategory = {
   id: string;
   name: string;
@@ -70,6 +84,19 @@ export type CreatedExpense = {
   description: string | null;
   claimed_amount: string;
   approved_amount: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CreatedMileageEntry = {
+  id: string;
+  reimbursement_id: string;
+  event_id: string;
+  trip_date: string;
+  source: "automatic" | "manual";
+  claimed_miles: string;
+  approved_miles: string;
+  mileage_rate_id: string;
   created_at: string;
   updated_at: string;
 };
@@ -95,6 +122,18 @@ export async function getActiveEvent(
 
   if (!response.ok) {
     throw new Error("Could not load active event");
+  }
+
+  return response.json();
+}
+
+export async function getAssignedEvents(
+  userId: string,
+): Promise<AssignedEvent[]> {
+  const response = await fetch(`/api/events/assigned/${userId}`);
+
+  if (!response.ok) {
+    throw new Error("Could not load assigned events");
   }
 
   return response.json();
@@ -162,6 +201,35 @@ export async function uploadExpenseReceipt(
 
   if (!response.ok) {
     throw new Error(body.error ?? "Could not upload receipt");
+  }
+
+  return body;
+}
+
+export async function createManualMileage(input: {
+  user_id: string;
+  event_id: string;
+  trip_date: string;
+  claimed_miles: string;
+}): Promise<CreatedMileageEntry> {
+  const response = await fetch("/api/mileage", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      user_id: input.user_id,
+      event_id: input.event_id,
+      trip_date: input.trip_date,
+      source: "manual",
+      claimed_miles: Number(input.claimed_miles),
+    }),
+  });
+
+  const body = await response.json();
+
+  if (!response.ok) {
+    throw new Error(body.error ?? "Could not save mileage");
   }
 
   return body;

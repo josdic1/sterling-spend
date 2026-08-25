@@ -20,6 +20,7 @@ import {
   Route as RouteIcon,
 } from "lucide-react";
 import { format } from "date-fns";
+import MileageCapture from "./components/MileageCapture";
 import ReceiptCapture from "./components/ReceiptCapture";
 import {
   getActiveEvent,
@@ -50,6 +51,7 @@ function EmployeeHome() {
     useState<ActiveEvent | null>(null);
   const [receiptFile, setReceiptFile] =
     useState<File | null>(null);
+  const [showMileage, setShowMileage] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -94,6 +96,11 @@ function EmployeeHome() {
     await loadHome();
   }
 
+  async function handleMileageSaved() {
+    setShowMileage(false);
+    await loadHome();
+  }
+
   if (receiptFile) {
     return (
       <div className="employee-app">
@@ -102,6 +109,19 @@ function EmployeeHome() {
           onCancel={() => setReceiptFile(null)}
           onSaved={() => {
             void handleReceiptSaved();
+          }}
+        />
+      </div>
+    );
+  }
+
+  if (showMileage) {
+    return (
+      <div className="employee-app">
+        <MileageCapture
+          onCancel={() => setShowMileage(false)}
+          onSaved={() => {
+            void handleMileageSaved();
           }}
         />
       </div>
@@ -206,7 +226,11 @@ function EmployeeHome() {
           </button>
 
           <div className="secondary-actions">
-            <button type="button" disabled={!canAdd}>
+            <button
+              type="button"
+              disabled={!canAdd}
+              onClick={() => setShowMileage(true)}
+            >
               <Car size={23} />
               <span>
                 <strong>Mileage</strong>
@@ -278,6 +302,7 @@ function EmployeeHome() {
                       <strong>
                         {expense.vendor || "Expense"}
                       </strong>
+
                       <strong>
                         {formatMoney(expense.claimed_amount)}
                       </strong>
@@ -310,6 +335,7 @@ function EmployeeHome() {
                     <div className="activity-copy">
                       <div className="activity-title">
                         <strong>Mileage</strong>
+
                         <strong>
                           {formatMoney(amount)}
                         </strong>
