@@ -258,3 +258,20 @@ export async function activateEvent(
     throw new Error(body.error ?? "Could not activate event");
   }
 }
+
+export async function endEventSession(
+  sessionId: string,
+): Promise<void> {
+  const response = await fetch(
+    `/api/events/sessions/${sessionId}/end`,
+    {
+      method: "POST",
+    },
+  );
+
+  const body = await response.json();
+
+  if (!response.ok) {
+    throw new Error(body.error ?? "Could not end event");
+  }
+}

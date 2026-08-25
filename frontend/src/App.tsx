@@ -20,6 +20,7 @@ import {
   Route as RouteIcon,
 } from "lucide-react";
 import { format } from "date-fns";
+import ActiveEventDetail from "./components/ActiveEventDetail";
 import EventSelector from "./components/EventSelector";
 import MileageCapture from "./components/MileageCapture";
 import ReceiptCapture from "./components/ReceiptCapture";
@@ -58,6 +59,8 @@ function EmployeeHome() {
     useState<CaptureMode>("receipt");
   const [showMileage, setShowMileage] = useState(false);
   const [showEventSelector, setShowEventSelector] =
+    useState(false);
+  const [showActiveEvent, setShowActiveEvent] =
     useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -124,6 +127,11 @@ function EmployeeHome() {
     await loadHome();
   }
 
+  async function handleEventEnded() {
+    setShowActiveEvent(false);
+    await loadHome();
+  }
+
   if (receiptFile) {
     return (
       <div className="employee-app">
@@ -159,6 +167,20 @@ function EmployeeHome() {
           onCancel={() => setShowEventSelector(false)}
           onActivated={() => {
             void handleEventActivated();
+          }}
+        />
+      </div>
+    );
+  }
+
+  if (showActiveEvent && activeEvent) {
+    return (
+      <div className="employee-app">
+        <ActiveEventDetail
+          event={activeEvent}
+          onCancel={() => setShowActiveEvent(false)}
+          onEnded={() => {
+            void handleEventEnded();
           }}
         />
       </div>
@@ -204,7 +226,11 @@ function EmployeeHome() {
 
       <main className="employee-page">
         {activeEvent ? (
-          <section className="active-event">
+          <button
+            type="button"
+            className="active-event"
+            onClick={() => setShowActiveEvent(true)}
+          >
             <div className="active-event-topline">
               <span className="active-dot" />
               ACTIVE EVENT
@@ -228,7 +254,7 @@ function EmployeeHome() {
 
               <ChevronRight size={22} />
             </div>
-          </section>
+          </button>
         ) : (
           <button
             type="button"
