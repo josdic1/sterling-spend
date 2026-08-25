@@ -593,3 +593,45 @@ export async function getReimbursementAttachments(
 
   return body;
 }
+
+export type ReceiptAnalysis = {
+  vendor: string | null;
+  expense_date: string | null;
+  amount: number | null;
+  category_id: string | null;
+  category_name: string | null;
+  confidence: number;
+  active_event: {
+    id: string;
+    event_number: string;
+    name: string;
+  } | null;
+};
+
+export async function analyzeReceipt(
+  userId: string,
+  file: File,
+): Promise<ReceiptAnalysis> {
+  const formData = new FormData();
+
+  formData.append("user_id", userId);
+  formData.append("file", file);
+
+  const response = await fetch(
+    "/api/receipt-analysis",
+    {
+      method: "POST",
+      body: formData,
+    },
+  );
+
+  const body = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      body.error ?? "Could not analyze receipt",
+    );
+  }
+
+  return body;
+}

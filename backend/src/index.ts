@@ -3,6 +3,7 @@ import { db } from "./db/index.js";
 import expensesRouter from "./routes/expenses.js";
 import eventsRouter from "./routes/events.js";
 import mileageRouter from "./routes/mileage.js";
+import receiptAnalysisRouter from "./routes/receipt-analysis.js";
 import reimbursementsRouter from "./routes/reimbursements.js";
 import {
   attachmentsRouter,
@@ -26,6 +27,7 @@ app.use("/api/attachments", attachmentsRouter);
 
 app.use("/api/events", eventsRouter);
 app.use("/api/mileage", mileageRouter);
+app.use("/api/receipt-analysis", receiptAnalysisRouter);
 
 app.get("/health", async (_req, res) => {
   const result = await db.query("SELECT NOW() AS now");
