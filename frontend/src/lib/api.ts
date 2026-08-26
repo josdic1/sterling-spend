@@ -206,6 +206,101 @@ export async function uploadExpenseReceipt(
   return body;
 }
 
+type AutomaticMileageEvent = {
+  id: string;
+  event_number: string;
+  name: string;
+  event_date: string;
+  venue_name: string | null;
+  venue_address: string;
+};
+
+export type AutomaticMileageQuote =
+  | {
+      already_saved: true;
+      event: AutomaticMileageEvent;
+      mileage: {
+        id: string;
+        claimed_miles: number;
+        rate_per_mile: number;
+      };
+      reimbursement_amount: number;
+    }
+  | {
+      already_saved: false;
+      event: AutomaticMileageEvent;
+      route: {
+        origin: string;
+        destination: string;
+        outbound_miles: number;
+        return_miles: number;
+        round_trip_miles: number;
+      };
+      mileage_rate: {
+        id: string;
+        rate_per_mile: number;
+      };
+      reimbursement_amount: number;
+    };
+
+export async function getAutomaticMileageQuote(
+  userId: string,
+): Promise<AutomaticMileageQuote> {
+  const response = await fetch(
+    "/api/mileage/automatic-quote",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        user_id: userId,
+      }),
+    },
+  );
+
+  const body = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      body.error ?? "Could not calculate mileage",
+    );
+  }
+
+  return body;
+}
+
+export async function createAutomaticMileage(input: {
+  user_id: string;
+  event_id: string;
+  trip_date: string;
+  claimed_miles: number;
+}): Promise<CreatedMileageEntry> {
+  const response = await fetch("/api/mileage", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      user_id: input.user_id,
+      event_id: input.event_id,
+      trip_date: input.trip_date,
+      source: "automatic",
+      claimed_miles: input.claimed_miles,
+    }),
+  });
+
+  const body = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      body.error ?? "Could not save automatic mileage",
+    );
+  }
+
+  return body;
+}
+
 export async function createManualMileage(input: {
   user_id: string;
   event_id: string;

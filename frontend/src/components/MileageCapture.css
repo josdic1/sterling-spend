@@ -43,9 +43,172 @@
   box-shadow: var(--shadow-card);
 }
 
+.mileage-auto-card {
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  background: var(--color-card);
+  box-shadow: var(--shadow-card);
+}
+
+.mileage-auto-label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 15px 17px 0;
+  color: var(--color-primary);
+  font-size: var(--text-xs);
+  font-weight: 800;
+  letter-spacing: 0.07em;
+}
+
+.mileage-auto-event {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 12px 17px 17px;
+  border-bottom: 1px solid var(--color-line);
+}
+
+.mileage-auto-event > div {
+  min-width: 0;
+}
+
+.mileage-auto-event h2 {
+  margin: 0;
+  color: var(--color-ink);
+  font-size: 22px;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+}
+
+.mileage-auto-event > div span,
+.mileage-auto-date {
+  display: block;
+  margin-top: 4px;
+  color: var(--color-subtle);
+  font-size: var(--text-sm);
+  font-weight: 700;
+}
+
+.mileage-auto-date {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.mileage-route {
+  padding: 18px 17px;
+}
+
+.mileage-route-stop {
+  display: grid;
+  grid-template-columns: 16px 1fr;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.mileage-route-stop > div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.mileage-route-stop strong {
+  color: var(--color-ink);
+  font-size: var(--text-sm);
+}
+
+.mileage-route-stop span:not(.route-dot) {
+  color: var(--color-subtle);
+  font-size: var(--text-xs);
+  line-height: 1.35;
+}
+
+.route-dot {
+  width: 10px;
+  height: 10px;
+  margin: 4px 0 0 3px;
+  border: 3px solid var(--color-primary);
+  border-radius: 50%;
+  background: var(--color-card);
+}
+
+.route-dot.destination {
+  background: var(--color-primary);
+}
+
+.route-line {
+  width: 2px;
+  height: 22px;
+  margin: 2px 0 2px 7px;
+  background: var(--color-line);
+}
+
+.mileage-results {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-top: 1px solid var(--color-line);
+}
+
+.mileage-results > div {
+  display: grid;
+  gap: 3px;
+  padding: 17px;
+}
+
+.mileage-results > div + div {
+  border-left: 1px solid var(--color-line);
+}
+
+.mileage-results strong {
+  color: var(--color-ink);
+  font-size: 27px;
+  line-height: 1;
+  letter-spacing: -0.035em;
+}
+
+.mileage-results span {
+  color: var(--color-subtle);
+  font-size: var(--text-xs);
+  font-weight: 700;
+}
+
 .mileage-form {
   display: grid;
   gap: var(--space-4);
+}
+
+.manual-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.manual-heading > div {
+  display: grid;
+  gap: 3px;
+}
+
+.manual-heading > div span {
+  color: var(--color-subtle);
+  font-size: var(--text-xs);
+  font-weight: 800;
+  letter-spacing: 0.07em;
+}
+
+.manual-heading > div strong {
+  color: var(--color-ink);
+  font-size: 20px;
+}
+
+.manual-heading button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-primary);
+  font-size: var(--text-sm);
+  font-weight: 800;
 }
 
 .mileage-field {
@@ -145,13 +308,18 @@
 }
 
 .mileage-helper {
-  margin: -4px 2px 0;
+  margin: 12px 2px 0;
   color: var(--color-subtle);
   font-size: var(--text-sm);
+  line-height: 1.45;
+}
+
+.mileage-form .mileage-helper {
+  margin-top: -4px;
 }
 
 .mileage-error {
-  margin: 0;
+  margin: 12px 0 0;
   padding: 11px 13px;
   border-radius: var(--radius-md);
   background: var(--color-orange-soft);
@@ -160,9 +328,14 @@
   font-weight: 700;
 }
 
+.mileage-form .mileage-error {
+  margin-top: 0;
+}
+
 .mileage-save {
+  width: 100%;
   min-height: 56px;
-  margin-top: var(--space-2);
+  margin-top: var(--space-4);
   border: 0;
   border-radius: var(--radius-lg);
   background: var(--color-primary);
@@ -172,8 +345,33 @@
   font-weight: 800;
 }
 
+.mileage-form .mileage-save {
+  margin-top: var(--space-2);
+}
+
 .mileage-save:hover:not(:disabled) {
   background: var(--color-primary-strong);
+}
+
+.mileage-save:disabled,
+.mileage-manual-toggle:disabled {
+  opacity: 0.6;
+}
+
+.mileage-manual-toggle {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 5px;
+  border: 0;
+  background: transparent;
+  color: var(--color-subtle);
+  font-size: var(--text-sm);
+  font-weight: 800;
+}
+
+.mileage-manual-toggle.standalone {
+  margin-top: var(--space-3);
+  color: var(--color-primary);
 }
 
 .mileage-message {
@@ -194,5 +392,7 @@
 }
 
 .mileage-message span {
+  max-width: 290px;
   font-size: var(--text-sm);
+  line-height: 1.45;
 }

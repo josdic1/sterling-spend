@@ -1,11 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
-import { Car, MapPin, X } from "lucide-react";
+import {
+  Car,
+  CheckCircle2,
+  MapPin,
+  Route,
+  X,
+} from "lucide-react";
 import { format } from "date-fns";
 import {
+  createAutomaticMileage,
   createManualMileage,
   getAssignedEvents,
+  getAutomaticMileageQuote,
   TEST_EMPLOYEE_ID,
   type AssignedEvent,
+  type AutomaticMileageQuote,
 } from "../lib/api";
 import "./MileageCapture.css";
 
@@ -25,48 +34,107 @@ function formatEventDate(value: string) {
   );
 }
 
+function formatMoney(value: number) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(value);
+}
+
+function formatRate(value: number) {
+  return `${(value * 100).toFixed(1)}¢/mi`;
+}
+
 export default function MileageCapture({
   onCancel,
   onSaved,
 }: MileageCaptureProps) {
+  const [quote, setQuote] =
+    useState<AutomaticMileageQuote | null>(null);
+
   const [events, setEvents] = useState<AssignedEvent[]>([]);
   const [eventId, setEventId] = useState("");
   const [miles, setMiles] = useState("");
+
+  const [manualMode, setManualMode] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [quoteError, setQuoteError] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
-    async function loadEvents() {
-      try {
-        setLoading(true);
-        setError("");
+    async function loadMileage() {
+      setLoading(true);
+      setQuoteError("");
+      setError("");
 
-        const result = await getAssignedEvents(
-          TEST_EMPLOYEE_ID,
+      const [quoteResult, eventsResult] =
+        await Promise.allSettled([
+          getAutomaticMileageQuote(TEST_EMPLOYEE_ID),
+          getAssignedEvents(TEST_EMPLOYEE_ID),
+        ]);
+
+      if (quoteResult.status === "fulfilled") {
+        setQuote(quoteResult.value);
+      } else {
+        setQuote(null);
+        setQuoteError(
+          quoteResult.reason instanceof Error
+            ? quoteResult.reason.message
+            : "Automatic mileage is unavailable.",
         );
-
-        setEvents(result);
-
-        if (result.length > 0) {
-          setEventId(result[0].id);
-        }
-      } catch {
-        setError("Could not load assigned events.");
-      } finally {
-        setLoading(false);
       }
+
+      if (eventsResult.status === "fulfilled") {
+        setEvents(eventsResult.value);
+
+        if (eventsResult.value.length > 0) {
+          setEventId(eventsResult.value[0].id);
+        }
+      }
+
+      setLoading(false);
     }
 
-    void loadEvents();
+    void loadMileage();
   }, []);
 
   const selectedEvent = useMemo(
-    () => events.find((event) => event.id === eventId) ?? null,
+    () =>
+      events.find((event) => event.id === eventId) ??
+      null,
     [events, eventId],
   );
 
-  async function handleSubmit(
+  async function handleAutomaticSave() {
+    if (!quote || quote.already_saved) {
+      return;
+    }
+
+    try {
+      setSaving(true);
+      setError("");
+
+      await createAutomaticMileage({
+        user_id: TEST_EMPLOYEE_ID,
+        event_id: quote.event.id,
+        trip_date: quote.event.event_date.slice(0, 10),
+        claimed_miles: quote.route.round_trip_miles,
+      });
+
+      onSaved();
+    } catch (caughtError) {
+      setError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Could not save mileage.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleManualSubmit(
     event: React.FormEvent<HTMLFormElement>,
   ) {
     event.preventDefault();
@@ -99,12 +167,43 @@ export default function MileageCapture({
     }
   }
 
+  if (loading) {
+    return (
+      <main className="mileage-capture">
+        <header className="mileage-capture-header">
+          <div>
+            <span>NEW MILEAGE</span>
+            <h1>Mileage</h1>
+          </div>
+
+          <button
+            type="button"
+            className="mileage-close"
+            onClick={onCancel}
+            aria-label="Close"
+          >
+            <X size={21} />
+          </button>
+        </header>
+
+        <div className="mileage-message">
+          <Route size={27} />
+          <strong>Calculating your route…</strong>
+          <span>
+            Sterling Carlstadt → event → Sterling
+            Carlstadt
+          </span>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="mileage-capture">
       <header className="mileage-capture-header">
         <div>
           <span>NEW MILEAGE</span>
-          <h1>Log mileage</h1>
+          <h1>Mileage</h1>
         </div>
 
         <button
@@ -117,23 +216,252 @@ export default function MileageCapture({
         </button>
       </header>
 
-      {loading ? (
-        <div className="mileage-message">
-          Loading assigned events…
-        </div>
+      {quote?.already_saved ? (
+        <>
+          <section className="mileage-auto-card">
+            <div className="mileage-auto-label">
+              <CheckCircle2 size={17} />
+              MILEAGE SAVED
+            </div>
+
+            <div className="mileage-auto-event">
+              <div>
+                <h2>{quote.event.name}</h2>
+                <span>{quote.event.event_number}</span>
+              </div>
+
+              <span className="mileage-auto-date">
+                {formatEventDate(
+                  quote.event.event_date,
+                )}
+              </span>
+            </div>
+
+            <div className="mileage-results">
+              <div>
+                <strong>
+                  {quote.mileage.claimed_miles.toFixed(1)}
+                </strong>
+                <span>miles round trip</span>
+              </div>
+
+              <div>
+                <strong>
+                  {formatMoney(
+                    quote.reimbursement_amount,
+                  )}
+                </strong>
+                <span>
+                  {formatRate(
+                    quote.mileage.rate_per_mile,
+                  )}
+                </span>
+              </div>
+            </div>
+          </section>
+
+          <p className="mileage-helper">
+            Mileage for this event has already been added
+            to your reimbursement.
+          </p>
+
+          <button
+            type="button"
+            className="mileage-save"
+            onClick={onCancel}
+          >
+            Done
+          </button>
+        </>
+      ) : !manualMode && quote ? (
+        <>
+          <section className="mileage-auto-card">
+            <div className="mileage-auto-label">
+              <Route size={17} />
+              AUTOMATIC ROUTE
+            </div>
+
+            <div className="mileage-auto-event">
+              <div>
+                <h2>{quote.event.name}</h2>
+                <span>{quote.event.event_number}</span>
+              </div>
+
+              <span className="mileage-auto-date">
+                {formatEventDate(
+                  quote.event.event_date,
+                )}
+              </span>
+            </div>
+
+            <div className="mileage-route">
+              <div className="mileage-route-stop">
+                <span className="route-dot" />
+
+                <div>
+                  <strong>Sterling Carlstadt</strong>
+                  <span>
+                    100 Commerce Road, Carlstadt, NJ
+                  </span>
+                </div>
+              </div>
+
+              <div className="route-line" />
+
+              <div className="mileage-route-stop">
+                <span className="route-dot destination" />
+
+                <div>
+                  <strong>
+                    {quote.event.venue_name ??
+                      quote.event.name}
+                  </strong>
+                  <span>
+                    {quote.event.venue_address}
+                  </span>
+                </div>
+              </div>
+
+              <div className="route-line" />
+
+              <div className="mileage-route-stop">
+                <span className="route-dot" />
+
+                <div>
+                  <strong>Sterling Carlstadt</strong>
+                  <span>Return</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="mileage-results">
+              <div>
+                <strong>
+                  {quote.route.round_trip_miles.toFixed(1)}
+                </strong>
+                <span>miles round trip</span>
+              </div>
+
+              <div>
+                <strong>
+                  {formatMoney(
+                    quote.reimbursement_amount,
+                  )}
+                </strong>
+                <span>
+                  {formatRate(
+                    quote.mileage_rate.rate_per_mile,
+                  )}
+                </span>
+              </div>
+            </div>
+          </section>
+
+          <p className="mileage-helper">
+            Mileage is calculated from Sterling
+            Carlstadt to the active event and back.
+          </p>
+
+          {error && (
+            <p className="mileage-error">{error}</p>
+          )}
+
+          <button
+            type="button"
+            className="mileage-save"
+            disabled={saving}
+            onClick={() => {
+              void handleAutomaticSave();
+            }}
+          >
+            {saving
+              ? "Saving…"
+              : "Confirm & Save"}
+          </button>
+
+          <button
+            type="button"
+            className="mileage-manual-toggle"
+            disabled={saving}
+            onClick={() => {
+              setError("");
+              setManualMode(true);
+            }}
+          >
+            Enter mileage manually
+          </button>
+        </>
+      ) : !manualMode ? (
+        <>
+          <div className="mileage-message">
+            <Car size={27} />
+            <strong>
+              Automatic route unavailable
+            </strong>
+            <span>
+              {quoteError ||
+                "Could not calculate this route."}
+            </span>
+          </div>
+
+          <button
+            type="button"
+            className="mileage-manual-toggle standalone"
+            onClick={() => {
+              setError("");
+              setManualMode(true);
+            }}
+          >
+            Enter mileage manually
+          </button>
+        </>
       ) : events.length === 0 ? (
-        <div className="mileage-message">
-          <Car size={26} />
-          <strong>No assigned events</strong>
-          <span>
-            Mileage must be linked to an event.
-          </span>
-        </div>
+        <>
+          <div className="mileage-message">
+            <Car size={26} />
+            <strong>No assigned events</strong>
+            <span>
+              Mileage must be linked to an event.
+            </span>
+          </div>
+
+          {quote && !quote.already_saved && (
+            <button
+              type="button"
+              className="mileage-manual-toggle standalone"
+              onClick={() => {
+                setError("");
+                setManualMode(false);
+              }}
+            >
+              Use automatic mileage
+            </button>
+          )}
+        </>
       ) : (
         <form
           className="mileage-form"
-          onSubmit={handleSubmit}
+          onSubmit={handleManualSubmit}
         >
+          <div className="manual-heading">
+            <div>
+              <span>MANUAL FALLBACK</span>
+              <strong>Enter mileage</strong>
+            </div>
+
+            {quote && !quote.already_saved && (
+              <button
+                type="button"
+                onClick={() => {
+                  setError("");
+                  setManualMode(false);
+                }}
+              >
+                Use automatic
+              </button>
+            )}
+          </div>
+
           <label className="mileage-field">
             <span>Event</span>
 
@@ -144,7 +472,10 @@ export default function MileageCapture({
               }
             >
               {events.map((event) => (
-                <option key={event.id} value={event.id}>
+                <option
+                  key={event.id}
+                  value={event.id}
+                >
                   {event.event_number} — {event.name}
                 </option>
               ))}
@@ -154,7 +485,10 @@ export default function MileageCapture({
           {selectedEvent && (
             <section className="mileage-event-card">
               <div>
-                <strong>{selectedEvent.name}</strong>
+                <strong>
+                  {selectedEvent.name}
+                </strong>
+
                 <span>
                   {formatEventDate(
                     selectedEvent.event_date,
@@ -162,10 +496,12 @@ export default function MileageCapture({
                 </span>
               </div>
 
-              {selectedEvent.venue_name && (
+              {(selectedEvent.venue_name ||
+                selectedEvent.venue_address) && (
                 <p>
                   <MapPin size={15} />
-                  {selectedEvent.venue_name}
+                  {selectedEvent.venue_name ??
+                    selectedEvent.venue_address}
                 </p>
               )}
             </section>
@@ -194,7 +530,8 @@ export default function MileageCapture({
           </label>
 
           <p className="mileage-helper">
-            Enter the total business miles for this event.
+            Manual entry is available when the automatic
+            route needs correction.
           </p>
 
           {error && (
@@ -206,7 +543,9 @@ export default function MileageCapture({
             className="mileage-save"
             disabled={saving}
           >
-            {saving ? "Saving…" : "Save mileage"}
+            {saving
+              ? "Saving…"
+              : "Save manual mileage"}
           </button>
         </form>
       )}
