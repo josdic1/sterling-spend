@@ -67,13 +67,14 @@ export default function LoginScreen() {
     }
   }
 
-  async function handleDevReset(mode: "keep_users" | "keep_users_events") {
-    const keepEvents = mode === "keep_users_events";
-    const confirmed = window.confirm(
-      keepEvents
-        ? "DEVELOPMENT RESET: Delete all activity and receipt files, but keep users, Events, and Event assignments?"
-        : "DEVELOPMENT RESET: Delete all activity, receipt files, Events, and assignments, but keep users?",
-    );
+  async function handleDevReset(mode: "keep_users" | "keep_users_events" | "full") {
+    const message = mode === "keep_users_events"
+      ? "DEVELOPMENT RESET: Delete all activity and receipt files, but keep users, Events, and Event assignments?"
+      : mode === "keep_users"
+        ? "DEVELOPMENT RESET: Delete all activity, receipt files, Events, and assignments, but keep users?"
+        : "FULL DEVELOPMENT WIPE: Delete all activity, receipt files, Events, assignments, and all non-core users? Jill and Josh D are kept only so development quick login still works.";
+
+    const confirmed = window.confirm(message);
 
     if (!confirmed) return;
 
@@ -204,6 +205,14 @@ export default function LoginScreen() {
               onClick={() => void handleDevReset("keep_users_events")}
             >
               CLEAR ALL DATA EXCEPT USERS AND EVENTS
+            </button>
+            <button
+              type="button"
+              className="dev-reset-full"
+              disabled={submitting}
+              onClick={() => void handleDevReset("full")}
+            >
+              FULL WIPE — KEEP JILL + JOSH
             </button>
             {resetMessage && <p className="dev-reset-success">{resetMessage}</p>}
           </section>

@@ -21,6 +21,14 @@ const setActiveSchema = z.object({
   is_active: z.boolean(),
 });
 
+const updateUserSchema = z.object({
+  requesting_user_id: z.string().uuid(),
+  name: z.string().trim().min(1).max(120),
+  email: z.string().trim().email().max(320),
+  username: z.string().trim().min(1).max(120),
+  password: z.string().min(4).max(500).optional(),
+});
+
 async function isActiveAdmin(userId: string) {
   const result = await db.query(
     `
@@ -189,6 +197,146 @@ router.post("/admin", async (req, res) => {
 
     await client.query("COMMIT");
     return res.status(201).json(user);
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+});
+
+router.patch("/:userId", async (req, res) => {
+  const { userId } = req.params;
+  const parsed = updateUserSchema.safeParse(req.body);
+
+  if (!parsed.success) {
+    return res.status(400).json({
+      error: "Invalid user data",
+      details: parsed.error.flatten(),
+    });
+  }
+
+  const {
+    requesting_user_id,
+    name,
+    email,
+    username,
+    password,
+  } = parsed.data;
+
+  const normalizedEmail = email.toLowerCase();
+  const client = await db.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const adminResult = await client.query(
+      `
+        SELECT id
+        FROM users
+        WHERE id = $1
+          AND role = 'admin'
+          AND is_active = TRUE
+      `,
+      [requesting_user_id],
+    );
+
+    if (adminResult.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return res.status(403).json({
+        error: "Only an active admin can edit users",
+      });
+    }
+
+    const existingResult = await client.query(
+      `
+        SELECT id, name, email, username, role, is_active, created_at
+        FROM users
+        WHERE id = $1
+        FOR UPDATE
+      `,
+      [userId],
+    );
+
+    if (existingResult.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const duplicateResult = await client.query(
+      `
+        SELECT id
+        FROM users
+        WHERE id <> $1
+          AND (
+            LOWER(email) = LOWER($2)
+            OR LOWER(username) = LOWER($3)
+          )
+        LIMIT 1
+      `,
+      [userId, normalizedEmail, username],
+    );
+
+    if (duplicateResult.rows.length > 0) {
+      await client.query("ROLLBACK");
+      return res.status(409).json({
+        error: "That email or username is already in use",
+      });
+    }
+
+    const existing = existingResult.rows[0];
+    const updatedResult = await client.query(
+      `
+        UPDATE users
+        SET
+          name = $1,
+          email = $2,
+          username = $3,
+          password_hash = CASE
+            WHEN $4::text IS NULL THEN password_hash
+            ELSE crypt($4, gen_salt('bf', 12))
+          END,
+          updated_at = NOW()
+        WHERE id = $5
+        RETURNING
+          id,
+          name,
+          email,
+          username,
+          role,
+          is_active,
+          created_at
+      `,
+      [name, normalizedEmail, username, password ?? null, userId],
+    );
+
+    const changes: Array<[string, string | null, string | null]> = [];
+    if (existing.name !== name) changes.push(["name", existing.name, name]);
+    if (existing.email !== normalizedEmail) changes.push(["email", existing.email, normalizedEmail]);
+    if ((existing.username ?? "") !== username) changes.push(["username", existing.username, username]);
+    if (password) changes.push(["password", null, "reset"]);
+
+    for (const [fieldName, oldValue, newValue] of changes) {
+      await client.query(
+        `
+          INSERT INTO audit_log (
+            entity_type,
+            entity_id,
+            action,
+            field_name,
+            old_value,
+            new_value,
+            changed_by_user_id,
+            reason
+          )
+          VALUES ('user', $1, 'updated', $2, $3, $4, $5, NULL)
+        `,
+        [userId, fieldName, oldValue, newValue, requesting_user_id],
+      );
+    }
+
+    await client.query("COMMIT");
+    return res.json(updatedResult.rows[0]);
   } catch (error) {
     await client.query("ROLLBACK");
     throw error;

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CalendarPlus, MapPin, Pencil } from "lucide-react";
+import { CalendarPlus, ChevronRight, MapPin, Pencil } from "lucide-react";
 import { format } from "date-fns";
 import {
   createAdminEvent,
@@ -10,6 +10,7 @@ import {
   type AdminEventInput,
   type AdminUser,
 } from "../lib/api";
+import AdminEventDashboard from "./AdminEventDashboard";
 import "./AdminEvents.css";
 
 type Props = { adminUserId: string };
@@ -60,6 +61,7 @@ export default function AdminEvents({ adminUserId }: Props) {
   const [events, setEvents] = useState<AdminEvent[]>([]);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [loading, setLoading] = useState(true);
@@ -150,6 +152,16 @@ export default function AdminEvents({ adminUserId }: Props) {
 
   if (loading) return <div className="admin-events-message">Loading events…</div>;
 
+  if (selectedEventId) {
+    return (
+      <AdminEventDashboard
+        adminUserId={adminUserId}
+        eventId={selectedEventId}
+        onBack={() => setSelectedEventId(null)}
+      />
+    );
+  }
+
   return (
     <section className="admin-events">
       <div className="admin-events-toolbar">
@@ -212,16 +224,23 @@ export default function AdminEvents({ adminUserId }: Props) {
             const assigned = event.assigned_user_ids.map((id) => names.get(id)).filter((name): name is string => Boolean(name));
             return (
               <article className="admin-event-card" key={event.id}>
-                <div className="admin-event-card-main">
-                  <span>{event.event_number}</span>
-                  <h2>{event.name}</h2>
-                  <strong>{eventDate(event.event_date)}</strong>
-                  {(event.venue_name || event.venue_address) && (
-                    <p><MapPin size={14} />{[event.venue_name, event.venue_address].filter(Boolean).join(" · ")}</p>
-                  )}
-                  <small>{assigned.length ? `Assigned: ${assigned.join(", ")}` : "No employees assigned"}</small>
-                </div>
-                <button type="button" onClick={() => edit(event)}><Pencil size={16} /> Edit</button>
+                <button
+                  type="button"
+                  className="admin-event-open"
+                  onClick={() => setSelectedEventId(event.id)}
+                >
+                  <div className="admin-event-card-main">
+                    <span>{event.event_number}</span>
+                    <h2>{event.name}</h2>
+                    <strong>{eventDate(event.event_date)}</strong>
+                    {(event.venue_name || event.venue_address) && (
+                      <p><MapPin size={14} />{[event.venue_name, event.venue_address].filter(Boolean).join(" · ")}</p>
+                    )}
+                    <small>{assigned.length ? `Assigned: ${assigned.join(", ")}` : "No employees assigned"}</small>
+                  </div>
+                  <ChevronRight size={19} />
+                </button>
+                <button type="button" className="admin-event-edit" onClick={() => edit(event)}><Pencil size={16} /> Edit</button>
               </article>
             );
           })}

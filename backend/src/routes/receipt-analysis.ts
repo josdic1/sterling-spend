@@ -54,6 +54,10 @@ const receiptExtractionSchema = z.object({
   confidence: z.number().min(0).max(1),
 });
 
+const receiptAmountFallbackSchema = z.object({
+  amount: z.number().nonnegative().nullable(),
+});
+
 router.post(
   "/",
   upload.single("file"),
@@ -115,7 +119,8 @@ router.post(
         SELECT
           e.id,
           e.event_number,
-          e.name
+          e.name,
+          e.event_date
         FROM event_sessions es
         JOIN events e
           ON e.id = es.event_id
@@ -158,8 +163,10 @@ Allowed categories:
 ${categoryNames}
 
 Rules:
-- Use the final total, not subtotal.
-- Include tax/tip only when they are part of the final charged total.
+- For amount, prioritize an explicit final line labeled TOTAL, GRAND TOTAL, AMOUNT DUE, BALANCE DUE, TOTAL DUE, or AMOUNT PAID.
+- An explicit final TOTAL is authoritative even when other dollar values appear elsewhere on the receipt.
+- Never use subtotal, tax, tip, cash/tendered, change, discount, or an individual line item as the final amount unless the receipt explicitly identifies it as the final charged/paid total.
+- Include tax/tip only when they are already part of the final charged total.
 - category_name must exactly match one of the allowed category names.
 - If a value cannot be determined reliably, return null for that value.
 - Do not invent information that is not visible or reasonably inferable from the receipt.
@@ -189,6 +196,60 @@ Rules:
       });
     }
 
+    let resolvedAmount = extraction.amount;
+
+    // If the broad receipt pass misses the total, make one focused second
+    // pass that reads only the final charged amount. This is deliberately
+    // narrow: it does not infer or calculate a total that is not visible.
+    if (resolvedAmount === null || resolvedAmount <= 0) {
+      const amountFallbackResponse = await openai.responses.parse({
+        model: "gpt-5.6-terra",
+        store: false,
+        input: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "input_text",
+                text: `
+Read ONLY the final amount actually charged or paid on this receipt.
+
+Priority labels include TOTAL, GRAND TOTAL, AMOUNT DUE, BALANCE DUE,
+TOTAL DUE, and AMOUNT PAID.
+
+Rules:
+- Prefer an explicitly printed final TOTAL over every other dollar value.
+- Ignore subtotal, tax, tip, individual items, discounts, cash/tendered,
+  and change unless the receipt explicitly identifies that value as the
+  final charged/paid amount.
+- Do not calculate or invent a total.
+- If no final charged/paid amount is visibly identifiable, return null.
+                `.trim(),
+              },
+              {
+                type: "input_image",
+                image_url: imageDataUrl,
+                detail: "high",
+              },
+            ],
+          },
+        ],
+        text: {
+          format: zodTextFormat(
+            receiptAmountFallbackSchema,
+            "receipt_amount_fallback",
+          ),
+        },
+      });
+
+      const fallbackAmount =
+        amountFallbackResponse.output_parsed?.amount ?? null;
+
+      if (fallbackAmount !== null && fallbackAmount > 0) {
+        resolvedAmount = fallbackAmount;
+      }
+    }
+
     const matchedCategory = extraction.category_name
       ? categories.find(
           (category) =>
@@ -204,13 +265,14 @@ Rules:
             event_number:
               activeEventResult.rows[0].event_number,
             name: activeEventResult.rows[0].name,
+            event_date: activeEventResult.rows[0].event_date,
           }
         : null;
 
     return res.json({
       vendor: extraction.vendor,
       expense_date: extraction.expense_date,
-      amount: extraction.amount,
+      amount: resolvedAmount,
       category_id: matchedCategory?.id ?? null,
       category_name: matchedCategory?.name ?? null,
       confidence: extraction.confidence,

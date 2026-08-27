@@ -1,0 +1,7 @@
+STERLING SPEND — RECEIPT AMOUNT EXTRACTION FIX
+
+- Strengthens the primary OCR instructions around explicit final TOTAL labels.
+- If the first receipt analysis still misses/returns $0 for the amount, runs one focused amount-only image pass.
+- The fallback never calculates or invents a total; it only returns a visibly identifiable final charged/paid amount.
+- Preserves GOOGLE_PLACES_API_KEY for nearby-vendor lookup.
+- No database migration.

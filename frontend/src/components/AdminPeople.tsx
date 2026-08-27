@@ -1,15 +1,23 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { UserPlus } from "lucide-react";
+import { Pencil, Save, UserPlus, X } from "lucide-react";
 import {
   createAdminUser,
   getAdminUsers,
   setAdminUserActive,
+  updateAdminUser,
   type AdminUser,
 } from "../lib/api";
 import "./AdminPeople.css";
 
 type AdminPeopleProps = {
   adminUserId: string;
+};
+
+type EditDraft = {
+  name: string;
+  email: string;
+  username: string;
+  password: string;
 };
 
 export default function AdminPeople({ adminUserId }: AdminPeopleProps) {
@@ -21,6 +29,8 @@ export default function AdminPeople({ adminUserId }: AdminPeopleProps) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [changingUserId, setChangingUserId] = useState<string | null>(null);
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState<EditDraft | null>(null);
   const [error, setError] = useState("");
 
   const loadUsers = useCallback(async () => {
@@ -125,6 +135,60 @@ export default function AdminPeople({ adminUserId }: AdminPeopleProps) {
     }
   }
 
+  function beginEdit(user: AdminUser) {
+    setEditingUserId(user.id);
+    setEditDraft({
+      name: user.name,
+      email: user.email,
+      username: user.username ?? "",
+      password: "",
+    });
+    setError("");
+  }
+
+  function cancelEdit() {
+    setEditingUserId(null);
+    setEditDraft(null);
+  }
+
+  async function saveEdit(user: AdminUser) {
+    if (!editDraft) return;
+
+    const trimmedName = editDraft.name.trim();
+    const trimmedEmail = editDraft.email.trim();
+    const trimmedUsername = editDraft.username.trim();
+
+    if (!trimmedName || !trimmedEmail || !trimmedUsername) return;
+    if (editDraft.password && editDraft.password.length < 4) return;
+
+    try {
+      setChangingUserId(user.id);
+      setError("");
+
+      const updated = await updateAdminUser(adminUserId, user.id, {
+        name: trimmedName,
+        email: trimmedEmail,
+        username: trimmedUsername,
+        ...(editDraft.password ? { password: editDraft.password } : {}),
+      });
+
+      setUsers((current) =>
+        current.map((entry) =>
+          entry.id === updated.id ? updated : entry,
+        ),
+      );
+      cancelEdit();
+    } catch (caughtError) {
+      setError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Could not save employee.",
+      );
+    } finally {
+      setChangingUserId(null);
+    }
+  }
+
   return (
     <section className="admin-people">
       <form
@@ -205,7 +269,7 @@ export default function AdminPeople({ adminUserId }: AdminPeopleProps) {
           </p>
         </div>
 
-        <span>History is never deleted.</span>
+        <span>Profile edits preserve history.</span>
       </div>
 
       {error && (
@@ -223,48 +287,126 @@ export default function AdminPeople({ adminUserId }: AdminPeopleProps) {
           {users.map((user) => {
             const isCurrentAdmin = user.id === adminUserId;
             const changing = changingUserId === user.id;
+            const editing = editingUserId === user.id && editDraft !== null;
 
             return (
-              <article className="admin-person-row" key={user.id}>
-                <div className="admin-person-main">
-                  <div>
-                    <strong>{user.name}</strong>
-                    <span>{user.email}</span>
-                    {user.username && <span>@{user.username}</span>}
+              <article className={`admin-person-row ${editing ? "editing" : ""}`} key={user.id}>
+                {editing ? (
+                  <div className="admin-person-edit-grid">
+                    <label>
+                      <span>Name</span>
+                      <input
+                        value={editDraft.name}
+                        onChange={(event) => setEditDraft({ ...editDraft, name: event.target.value })}
+                      />
+                    </label>
+                    <label>
+                      <span>Email</span>
+                      <input
+                        type="email"
+                        value={editDraft.email}
+                        onChange={(event) => setEditDraft({ ...editDraft, email: event.target.value })}
+                      />
+                    </label>
+                    <label>
+                      <span>Username</span>
+                      <input
+                        value={editDraft.username}
+                        onChange={(event) => setEditDraft({ ...editDraft, username: event.target.value })}
+                      />
+                    </label>
+                    <label>
+                      <span>New password <em>optional</em></span>
+                      <input
+                        type="password"
+                        value={editDraft.password}
+                        placeholder="Leave blank to keep current"
+                        autoComplete="new-password"
+                        onChange={(event) => setEditDraft({ ...editDraft, password: event.target.value })}
+                      />
+                    </label>
+
+                    <div className="admin-person-edit-actions">
+                      <button
+                        type="button"
+                        className="admin-person-save"
+                        disabled={
+                          changing ||
+                          !editDraft.name.trim() ||
+                          !editDraft.email.trim() ||
+                          !editDraft.username.trim() ||
+                          Boolean(editDraft.password && editDraft.password.length < 4)
+                        }
+                        onClick={() => void saveEdit(user)}
+                      >
+                        <Save size={15} />
+                        {changing ? "Saving…" : "Save"}
+                      </button>
+                      <button
+                        type="button"
+                        className="admin-person-cancel"
+                        disabled={changing}
+                        onClick={cancelEdit}
+                      >
+                        <X size={15} />
+                        Cancel
+                      </button>
+                    </div>
                   </div>
+                ) : (
+                  <>
+                    <div className="admin-person-main">
+                      <div>
+                        <strong>{user.name}</strong>
+                        <span>{user.email}</span>
+                        {user.username && <span>@{user.username}</span>}
+                      </div>
 
-                  <div className="admin-person-badges">
-                    <span className={`admin-person-status ${user.is_active ? "active" : "inactive"}`}>
-                      {user.is_active ? "Active" : "Inactive"}
-                    </span>
+                      <div className="admin-person-badges">
+                        <span className={`admin-person-status ${user.is_active ? "active" : "inactive"}`}>
+                          {user.is_active ? "Active" : "Inactive"}
+                        </span>
 
-                    {user.role === "admin" && (
-                      <span className="admin-person-role">Admin</span>
-                    )}
-                  </div>
-                </div>
+                        {user.role === "admin" && (
+                          <span className="admin-person-role">Admin</span>
+                        )}
+                      </div>
+                    </div>
 
-                <button
-                  type="button"
-                  className={user.is_active ? "admin-person-deactivate" : "admin-person-reactivate"}
-                  disabled={changing || isCurrentAdmin}
-                  onClick={() => {
-                    void handleStatusChange(user);
-                  }}
-                  title={
-                    isCurrentAdmin
-                      ? "The current admin cannot deactivate their own account"
-                      : undefined
-                  }
-                >
-                  {isCurrentAdmin
-                    ? "Current admin"
-                    : changing
-                      ? "Saving…"
-                      : user.is_active
-                        ? "Deactivate"
-                        : "Reactivate"}
-                </button>
+                    <div className="admin-person-actions">
+                      <button
+                        type="button"
+                        className="admin-person-edit"
+                        disabled={changing}
+                        onClick={() => beginEdit(user)}
+                      >
+                        <Pencil size={14} />
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        className={user.is_active ? "admin-person-deactivate" : "admin-person-reactivate"}
+                        disabled={changing || isCurrentAdmin}
+                        onClick={() => {
+                          void handleStatusChange(user);
+                        }}
+                        title={
+                          isCurrentAdmin
+                            ? "The current admin cannot deactivate their own account"
+                            : undefined
+                        }
+                      >
+                        {isCurrentAdmin
+                          ? "Current admin"
+                          : changing
+                            ? "Saving…"
+                            : user.is_active
+                              ? "Deactivate"
+                              : "Reactivate"}
+                      </button>
+                    </div>
+                  </>
+                )}
               </article>
             );
           })}

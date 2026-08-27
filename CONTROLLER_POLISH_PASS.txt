@@ -1,0 +1,14 @@
+Sterling Spend controller polish pass — 2026-08-27
+
+Adds:
+- Jill can edit People: name, email, username, optional password reset.
+- Existing user history remains attached; edits are audited.
+- Dev-only FULL WIPE removes activity, R2 files, Events, assignments, and non-core users while keeping Jill + Josh D so quick login remains usable.
+- Receipt date truth is Event-aware: capture date is metadata, not the expense date.
+- Active Event receipt date stays hidden when it agrees with Event date.
+- Missing/different date is surfaced with a one-tap "Use Event date" action.
+- Event dashboard flags true receipt-vs-Event date mismatches and highlights the affected expense row.
+- Preserves GOOGLE_PLACES_API_KEY for Places vendor suggestions.
+- Includes the read-only Event dashboard integration so Events > Event opens the real-data dashboard.
+
+No database migration.

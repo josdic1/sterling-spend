@@ -44,13 +44,6 @@ function formatExpenseDate(value: string) {
   );
 }
 
-function localDateKey(date = new Date()) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
 export default function ReceiptCapture({
   userId,
   file,
@@ -127,12 +120,7 @@ export default function ReceiptCapture({
             : "",
         );
 
-        const captureDate = localDateKey();
-        setExpenseDate(
-          result.active_event
-            ? (result.expense_date ?? captureDate)
-            : (result.expense_date ?? ""),
-        );
+        setExpenseDate(result.expense_date ?? "");
 
         if (isToll) {
           const tollCategory =
@@ -184,22 +172,35 @@ export default function ReceiptCapture({
     !isToll &&
     analysis?.vendor === null;
 
-  const captureDate = localDateKey();
-  const hasActiveEvent = analysis?.active_event !== null;
-  const receiptDateDiffersFromCapture =
-    Boolean(analysis?.active_event) &&
-    analysis?.expense_date !== null &&
-    analysis?.expense_date !== captureDate;
+  const hasActiveEvent = Boolean(analysis?.active_event);
+  const selectedAssignedEvent = assignedEvents.find(
+    (event) => event.id === eventId,
+  );
+  const selectedEventDate =
+    analysis?.active_event?.event_date ??
+    selectedAssignedEvent?.event_date ??
+    null;
+  const selectedEventName =
+    analysis?.active_event?.name ??
+    selectedAssignedEvent?.name ??
+    null;
+  const selectedEventDateKey = selectedEventDate
+    ? selectedEventDate.slice(0, 10)
+    : null;
 
-  // During an active Event, capture date is already known. Only surface
-  // the receipt date when OCR explicitly found a different date.
+  // Receipt date is financial truth. Capture date is only metadata.
+  // For Event expenses, compare the receipt date to the Event date.
+  const needsDate = Boolean(analysis) && expenseDate === "";
+  const receiptDateDiffersFromEvent =
+    Boolean(selectedEventDateKey) &&
+    expenseDate !== "" &&
+    expenseDate !== selectedEventDateKey;
+
+  // Active Event receipts stay frictionless when the date agrees with the
+  // Event. Historical/manual entries keep the date visible.
   const showDateField =
     Boolean(analysis) &&
-    (!hasActiveEvent || receiptDateDiffersFromCapture);
-
-  const needsDate =
-    !hasActiveEvent &&
-    analysis?.expense_date === null;
+    (!hasActiveEvent || needsDate || receiptDateDiffersFromEvent);
 
   const needsCategory =
     !isToll &&
@@ -210,8 +211,8 @@ export default function ReceiptCapture({
     needsVendor ? "Vendor not found" : null,
     needsDate ? "Date not found" : null,
     needsCategory ? "Category not determined" : null,
-    receiptDateDiffersFromCapture && analysis?.expense_date
-      ? `Check date — receipt says ${formatExpenseDate(analysis.expense_date)}`
+    receiptDateDiffersFromEvent && selectedEventDateKey
+      ? `Check date — receipt says ${formatExpenseDate(expenseDate)} · Event is ${formatExpenseDate(selectedEventDateKey)}`
       : null,
   ].filter((issue): issue is string => issue !== null);
 
@@ -514,30 +515,41 @@ export default function ReceiptCapture({
               )}
 
               {showDateField && (
-                <div className={(needsDate || receiptDateDiffersFromCapture) ? "receipt-detail-edit receipt-field-warning" : undefined}>
+                <div className={(needsDate || receiptDateDiffersFromEvent) ? "receipt-detail-edit receipt-field-warning" : undefined}>
                   <span>Date</span>
 
-                  {needsDate || receiptDateDiffersFromCapture ? (
-                    <div className="receipt-date-check">
-                      <input
-                        className="receipt-confirm-input"
-                        type="date"
-                        value={expenseDate}
-                        onChange={(event) =>
-                          setExpenseDate(
-                            event.target.value,
-                          )
-                        }
-                      />
-                      {receiptDateDiffersFromCapture && (
-                        <small>Receipt date differs from capture date.</small>
-                      )}
-                    </div>
-                  ) : (
-                    <strong>
-                      {formatExpenseDate(expenseDate)}
-                    </strong>
-                  )}
+                  <div className="receipt-date-check">
+                    <input
+                      className="receipt-confirm-input"
+                      type="date"
+                      value={expenseDate}
+                      onChange={(event) =>
+                        setExpenseDate(event.target.value)
+                      }
+                    />
+
+                    {selectedEventDateKey && expenseDate !== selectedEventDateKey && (
+                      <button
+                        type="button"
+                        className="receipt-use-event-date"
+                        onClick={() => setExpenseDate(selectedEventDateKey)}
+                      >
+                        Use Event date · {formatExpenseDate(selectedEventDateKey)}
+                      </button>
+                    )}
+
+                    {receiptDateDiffersFromEvent && selectedEventDateKey && (
+                      <small>
+                        Receipt date differs from {selectedEventName ?? "the Event"}. Keep the receipt date if it is correct, or use the Event date.
+                      </small>
+                    )}
+
+                    {needsDate && selectedEventDateKey && (
+                      <small>
+                        No date was readable. Use the Event date if that is when the purchase happened.
+                      </small>
+                    )}
+                  </div>
                 </div>
               )}
 

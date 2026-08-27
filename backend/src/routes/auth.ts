@@ -17,7 +17,7 @@ const devLoginSchema = z.object({
 });
 
 const devResetSchema = z.object({
-  mode: z.enum(["keep_users", "keep_users_events"]),
+  mode: z.enum(["keep_users", "keep_users_events", "full"]),
   confirm: z.literal("RESET"),
 });
 
@@ -142,13 +142,32 @@ router.post("/dev-reset", async (req, res) => {
       "auth_sessions",
     ];
 
-    if (parsed.data.mode === "keep_users") {
+    if (parsed.data.mode === "keep_users" || parsed.data.mode === "full") {
       activityTables.push("event_assignments", "events");
     }
 
     await client.query(
       `TRUNCATE TABLE ${activityTables.join(", ")} RESTART IDENTITY CASCADE`,
     );
+
+    if (parsed.data.mode === "full") {
+      // Keep only the two development identities so the app remains usable
+      // after a destructive demo reset. Everything else is removed.
+      await client.query(
+        `
+          DELETE FROM users
+          WHERE LOWER(COALESCE(username, '')) NOT IN ('jill', 'josh d')
+        `,
+      );
+
+      await client.query(
+        `
+          UPDATE users
+          SET is_active = TRUE, updated_at = NOW()
+          WHERE LOWER(COALESCE(username, '')) IN ('jill', 'josh d')
+        `,
+      );
+    }
 
     await client.query("COMMIT");
 

@@ -235,6 +235,383 @@ router.put("/admin/:eventId", async (req, res) => {
   }
 });
 
+
+router.get("/admin/:eventId/detail", async (req, res) => {
+  const { eventId } = req.params;
+  const parsed = adminQuerySchema.safeParse(req.query);
+
+  if (!parsed.success) {
+    return res.status(400).json({ error: "Invalid admin request" });
+  }
+
+  const { requesting_user_id } = parsed.data;
+
+  if (!(await isActiveAdmin(requesting_user_id))) {
+    return res.status(403).json({ error: "Only an active admin can view event details" });
+  }
+
+  const eventResult = await db.query(
+    `SELECT
+      id, event_number, name, event_date, event_type,
+      venue_name, venue_address, client_name,
+      start_time, end_time, status, created_at, updated_at
+    FROM events
+    WHERE id = $1`,
+    [eventId],
+  );
+
+  if (eventResult.rows.length === 0) {
+    return res.status(404).json({ error: "Event not found" });
+  }
+
+  const [employeeResult, expenseResult, mileageResult, sessionResult, duplicateResult] =
+    await Promise.all([
+      db.query(
+        `SELECT
+          u.id,
+          u.name,
+          u.email,
+          u.role,
+          u.is_active,
+          EXISTS (
+            SELECT 1
+            FROM event_sessions es
+            WHERE es.event_id = $1
+              AND es.user_id = u.id
+              AND es.ended_at IS NULL
+          ) AS active_now
+        FROM event_assignments ea
+        JOIN users u ON u.id = ea.user_id
+        WHERE ea.event_id = $1
+        ORDER BY u.name`,
+        [eventId],
+      ),
+      db.query(
+        `SELECT
+          ex.id,
+          ex.expense_date,
+          ex.vendor,
+          ex.description,
+          ex.claimed_amount,
+          ex.approved_amount,
+          ex.created_at,
+          c.name AS category_name,
+          u.id AS employee_id,
+          u.name AS employee_name,
+          COALESCE(
+            json_agg(
+              json_build_object(
+                'id', a.id,
+                'file_name', a.file_name,
+                'mime_type', a.mime_type,
+                'file_size_bytes', a.file_size_bytes,
+                'created_at', a.created_at
+              ) ORDER BY a.created_at
+            ) FILTER (WHERE a.id IS NOT NULL),
+            '[]'::json
+          ) AS attachments
+        FROM expenses ex
+        JOIN reimbursements r ON r.id = ex.reimbursement_id
+        JOIN users u ON u.id = r.user_id
+        JOIN expense_categories c ON c.id = ex.category_id
+        LEFT JOIN expense_attachments ea ON ea.expense_id = ex.id
+        LEFT JOIN attachments a ON a.id = ea.attachment_id
+        WHERE ex.event_id = $1
+        GROUP BY ex.id, c.name, u.id, u.name
+        ORDER BY ex.created_at DESC`,
+        [eventId],
+      ),
+      db.query(
+        `SELECT
+          me.id,
+          me.event_session_id,
+          me.trip_date,
+          me.source,
+          me.claimed_miles,
+          me.approved_miles,
+          me.planned_tolls_amount,
+          me.created_at,
+          mr.rate_per_mile,
+          u.id AS employee_id,
+          u.name AS employee_name
+        FROM mileage_entries me
+        JOIN reimbursements r ON r.id = me.reimbursement_id
+        JOIN users u ON u.id = r.user_id
+        JOIN mileage_rates mr ON mr.id = me.mileage_rate_id
+        WHERE me.event_id = $1
+        ORDER BY me.created_at DESC`,
+        [eventId],
+      ),
+      db.query(
+        `SELECT
+          es.id,
+          es.user_id AS employee_id,
+          u.name AS employee_name,
+          es.started_at,
+          es.ended_at,
+          es.planned_miles,
+          es.planned_tolls_amount,
+          es.planned_mileage_amount,
+          es.travel_calculated_at
+        FROM event_sessions es
+        JOIN users u ON u.id = es.user_id
+        WHERE es.event_id = $1
+        ORDER BY es.started_at DESC`,
+        [eventId],
+      ),
+      db.query(
+        `SELECT
+          r.user_id AS employee_id,
+          u.name AS employee_name,
+          COALESCE(ex.vendor, '') AS vendor,
+          ex.expense_date,
+          ex.claimed_amount,
+          COUNT(*)::int AS count
+        FROM expenses ex
+        JOIN reimbursements r ON r.id = ex.reimbursement_id
+        JOIN users u ON u.id = r.user_id
+        WHERE ex.event_id = $1
+        GROUP BY r.user_id, u.name, COALESCE(ex.vendor, ''), ex.expense_date, ex.claimed_amount
+        HAVING COUNT(*) > 1
+        ORDER BY ex.expense_date DESC, u.name`,
+        [eventId],
+      ),
+    ]);
+
+  const expenses = expenseResult.rows.map((row) => ({
+    ...row,
+    claimed_amount: Number(row.claimed_amount),
+    approved_amount: Number(row.approved_amount),
+    attachments: (row.attachments ?? []).map((attachment: Record<string, unknown>) => ({
+      ...attachment,
+      file_size_bytes: String(attachment.file_size_bytes ?? "0"),
+    })),
+  }));
+
+  const mileage = mileageResult.rows.map((row) => {
+    const claimedMiles = Number(row.claimed_miles);
+    const approvedMiles = Number(row.approved_miles);
+    const rate = Number(row.rate_per_mile);
+    const plannedTolls = row.planned_tolls_amount === null
+      ? null
+      : Number(row.planned_tolls_amount);
+
+    return {
+      ...row,
+      claimed_miles: claimedMiles,
+      approved_miles: approvedMiles,
+      rate_per_mile: rate,
+      claimed_mileage_amount: Math.round(claimedMiles * rate * 100) / 100,
+      approved_mileage_amount: Math.round(approvedMiles * rate * 100) / 100,
+      planned_tolls_amount: plannedTolls,
+    };
+  });
+
+  const receiptExpenses = expenses.filter((expense) => expense.category_name !== "Tolls");
+  const tollExpenses = expenses.filter((expense) => expense.category_name === "Tolls");
+  const receiptTotal = receiptExpenses.reduce((sum, expense) => sum + expense.approved_amount, 0);
+  const tollTotal = tollExpenses.reduce((sum, expense) => sum + expense.approved_amount, 0);
+  const mileageTotal = mileage.reduce((sum, entry) => sum + entry.approved_mileage_amount, 0);
+
+  const tollEvidenceByEmployee = new Map<string, number>();
+  for (const expense of tollExpenses) {
+    tollEvidenceByEmployee.set(
+      expense.employee_id,
+      (tollEvidenceByEmployee.get(expense.employee_id) ?? 0) + expense.approved_amount,
+    );
+  }
+
+  const travelByEmployee = employeeResult.rows
+    .map((employee) => {
+      const entries = mileage.filter((entry) => entry.employee_id === employee.id);
+      if (entries.length === 0) return null;
+
+      const plannedValues = entries
+        .map((entry) => entry.planned_tolls_amount)
+        .filter((value): value is number => value !== null);
+      const plannedTolls = plannedValues.length === 0
+        ? null
+        : plannedValues.reduce((sum, value) => sum + value, 0);
+      const tollEvidence = tollEvidenceByEmployee.get(employee.id) ?? 0;
+      const approvedMiles = entries.reduce((sum, entry) => sum + entry.approved_miles, 0);
+      const mileageAmount = entries.reduce((sum, entry) => sum + entry.approved_mileage_amount, 0);
+
+      return {
+        employee_id: employee.id,
+        employee_name: employee.name,
+        trip_count: entries.length,
+        approved_miles: Math.round(approvedMiles * 100) / 100,
+        mileage_amount: Math.round(mileageAmount * 100) / 100,
+        planned_tolls_amount: plannedTolls === null ? null : Math.round(plannedTolls * 100) / 100,
+        toll_evidence_amount: Math.round(tollEvidence * 100) / 100,
+        toll_difference: plannedTolls === null
+          ? null
+          : Math.round((tollEvidence - plannedTolls) * 100) / 100,
+      };
+    })
+    .filter((entry) => entry !== null);
+
+  const issues: Array<{
+    type: string;
+    message: string;
+    employee_id?: string;
+    employee_name?: string;
+    expense_id?: string;
+  }> = [];
+
+  for (const travel of travelByEmployee) {
+    if (
+      travel.planned_tolls_amount !== null &&
+      travel.toll_difference !== null &&
+      Math.abs(travel.toll_difference) >= 0.01
+    ) {
+      issues.push({
+        type: "toll_mismatch",
+        employee_id: travel.employee_id,
+        employee_name: travel.employee_name,
+        message: travel.toll_evidence_amount === 0
+          ? `Toll evidence missing — Planned $${travel.planned_tolls_amount.toFixed(2)} · Evidence $0.00`
+          : `Toll difference — Planned $${travel.planned_tolls_amount.toFixed(2)} · Evidence $${travel.toll_evidence_amount.toFixed(2)}`,
+      });
+    }
+  }
+
+  for (const row of duplicateResult.rows) {
+    issues.push({
+      type: "possible_duplicate",
+      employee_id: row.employee_id,
+      employee_name: row.employee_name,
+      message: `Possible duplicate — ${row.vendor || "Expense"} · $${Number(row.claimed_amount).toFixed(2)} · ${row.expense_date} · ${row.count} entries`,
+    });
+  }
+
+  const eventDateKey = String(eventResult.rows[0].event_date).slice(0, 10);
+  for (const expense of expenses) {
+    const expenseDateKey = String(expense.expense_date).slice(0, 10);
+    if (expenseDateKey !== eventDateKey) {
+      issues.push({
+        type: "date_mismatch",
+        expense_id: expense.id,
+        employee_id: expense.employee_id,
+        employee_name: expense.employee_name,
+        message: `Date mismatch — ${expense.vendor || expense.category_name} · Receipt ${expenseDateKey} · Event ${eventDateKey}`,
+      });
+    }
+  }
+
+  const employees = employeeResult.rows.map((employee) => {
+    const employeeExpenses = expenses.filter((expense) => expense.employee_id === employee.id);
+    const employeeMileage = mileage.filter((entry) => entry.employee_id === employee.id);
+    const employeeReceipts = employeeExpenses.filter((expense) => expense.category_name !== "Tolls");
+    const employeeTolls = employeeExpenses.filter((expense) => expense.category_name === "Tolls");
+    const receiptsTotal = employeeReceipts.reduce((sum, expense) => sum + expense.approved_amount, 0);
+    const tollsTotal = employeeTolls.reduce((sum, expense) => sum + expense.approved_amount, 0);
+    const employeeMileageTotal = employeeMileage.reduce((sum, entry) => sum + entry.approved_mileage_amount, 0);
+    const miles = employeeMileage.reduce((sum, entry) => sum + entry.approved_miles, 0);
+
+    return {
+      ...employee,
+      receipt_count: employeeReceipts.length,
+      toll_count: employeeTolls.length,
+      mileage_count: employeeMileage.length,
+      miles: Math.round(miles * 100) / 100,
+      receipts_total: Math.round(receiptsTotal * 100) / 100,
+      tolls_total: Math.round(tollsTotal * 100) / 100,
+      mileage_total: Math.round(employeeMileageTotal * 100) / 100,
+      total: Math.round((receiptsTotal + tollsTotal + employeeMileageTotal) * 100) / 100,
+    };
+  });
+
+  const categoryMap = new Map<string, number>();
+  for (const expense of expenses) {
+    categoryMap.set(
+      expense.category_name,
+      (categoryMap.get(expense.category_name) ?? 0) + expense.approved_amount,
+    );
+  }
+  if (mileageTotal > 0) {
+    categoryMap.set("Mileage", (categoryMap.get("Mileage") ?? 0) + mileageTotal);
+  }
+
+  const activity = [
+    {
+      type: "event_created",
+      occurred_at: eventResult.rows[0].created_at,
+      employee_name: "",
+      label: "Event created",
+      detail: eventResult.rows[0].event_number,
+    },
+    ...sessionResult.rows.flatMap((session) => {
+      const rows = [{
+        type: "event_started",
+        occurred_at: session.started_at,
+        employee_name: session.employee_name,
+        label: "Event started",
+        detail: session.employee_name,
+      }];
+      if (session.ended_at) {
+        rows.push({
+          type: "event_finished",
+          occurred_at: session.ended_at,
+          employee_name: session.employee_name,
+          label: "Event finished",
+          detail: session.employee_name,
+        });
+      }
+      return rows;
+    }),
+    ...expenses.map((expense) => ({
+      type: "expense_saved",
+      occurred_at: expense.created_at,
+      employee_name: expense.employee_name,
+      label: expense.category_name === "Tolls" ? "Toll saved" : "Receipt saved",
+      detail: `${expense.employee_name} · ${expense.vendor || expense.category_name} · $${expense.approved_amount.toFixed(2)}`,
+    })),
+    ...mileage.map((entry) => ({
+      type: "mileage_recorded",
+      occurred_at: entry.created_at,
+      employee_name: entry.employee_name,
+      label: "Mileage recorded",
+      detail: `${entry.employee_name} · ${entry.approved_miles.toFixed(2)} mi`,
+    })),
+  ].sort((a, b) => new Date(a.occurred_at).getTime() - new Date(b.occurred_at).getTime());
+
+  const documents = expenses.flatMap((expense) =>
+    expense.attachments.map((attachment: Record<string, unknown>) => ({
+      ...attachment,
+      expense_id: expense.id,
+      employee_id: expense.employee_id,
+      employee_name: expense.employee_name,
+      vendor: expense.vendor,
+      category_name: expense.category_name,
+    })),
+  );
+
+  return res.json({
+    event: eventResult.rows[0],
+    totals: {
+      total: Math.round((receiptTotal + tollTotal + mileageTotal) * 100) / 100,
+      receipts: Math.round(receiptTotal * 100) / 100,
+      mileage: Math.round(mileageTotal * 100) / 100,
+      tolls: Math.round(tollTotal * 100) / 100,
+      receipt_count: receiptExpenses.length,
+      mileage_count: mileage.length,
+      toll_count: tollExpenses.length,
+    },
+    employees,
+    expenses,
+    mileage,
+    travel_by_employee: travelByEmployee,
+    sessions: sessionResult.rows,
+    issues,
+    category_breakdown: [...categoryMap.entries()]
+      .map(([name, amount]) => ({ name, amount: Math.round(amount * 100) / 100 }))
+      .sort((a, b) => b.amount - a.amount),
+    activity,
+    documents,
+  });
+});
+
 router.get("/assigned/:userId", async (req, res) => {
   const { userId } = req.params;
   const result = await db.query(

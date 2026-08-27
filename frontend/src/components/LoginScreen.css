@@ -106,3 +106,9 @@
   line-height: 1.45;
   text-align: center;
 }
+
+.dev-reset-panel .dev-reset-full {
+  border-color: #d77b72;
+  color: #9b2f24;
+  background: #fff7f6;
+}

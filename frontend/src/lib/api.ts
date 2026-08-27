@@ -605,6 +605,37 @@ export async function createAdminUser(
   return body;
 }
 
+export async function updateAdminUser(
+  adminUserId: string,
+  userId: string,
+  input: {
+    name: string;
+    email: string;
+    username: string;
+    password?: string;
+  },
+): Promise<AdminUser> {
+  const response = await fetch(`/api/users/${userId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      requesting_user_id: adminUserId,
+      name: input.name,
+      email: input.email,
+      username: input.username,
+      ...(input.password ? { password: input.password } : {}),
+    }),
+  });
+
+  const body = await response.json();
+
+  if (!response.ok) {
+    throw new Error(body.error ?? "Could not update employee");
+  }
+
+  return body;
+}
+
 export async function setAdminUserActive(
   adminUserId: string,
   userId: string,
@@ -704,6 +735,152 @@ export async function updateAdminEvent(
   const body = await response.json();
   if (!response.ok) {
     throw new Error(body.error ?? "Could not update event");
+  }
+  return body;
+}
+
+
+export type AdminEventDetailAttachment = {
+  id: string;
+  file_name: string;
+  mime_type: string;
+  file_size_bytes: string;
+  created_at: string;
+  expense_id: string;
+  employee_id: string;
+  employee_name: string;
+  vendor: string | null;
+  category_name: string;
+};
+
+export type AdminEventDetailExpense = {
+  id: string;
+  expense_date: string;
+  vendor: string | null;
+  description: string | null;
+  claimed_amount: number;
+  approved_amount: number;
+  created_at: string;
+  category_name: string;
+  employee_id: string;
+  employee_name: string;
+  attachments: Array<Omit<AdminEventDetailAttachment, "expense_id" | "employee_id" | "employee_name" | "vendor" | "category_name">>;
+};
+
+export type AdminEventDetailMileage = {
+  id: string;
+  event_session_id: string | null;
+  trip_date: string;
+  source: "automatic" | "manual";
+  claimed_miles: number;
+  approved_miles: number;
+  rate_per_mile: number;
+  claimed_mileage_amount: number;
+  approved_mileage_amount: number;
+  planned_tolls_amount: number | null;
+  employee_id: string;
+  employee_name: string;
+  created_at: string;
+};
+
+export type AdminEventDetailTravelSummary = {
+  employee_id: string;
+  employee_name: string;
+  trip_count: number;
+  approved_miles: number;
+  mileage_amount: number;
+  planned_tolls_amount: number | null;
+  toll_evidence_amount: number;
+  toll_difference: number | null;
+};
+
+export type AdminEventDetailEmployee = {
+  id: string;
+  name: string;
+  email: string;
+  role: "user" | "admin";
+  is_active: boolean;
+  active_now: boolean;
+  receipt_count: number;
+  toll_count: number;
+  mileage_count: number;
+  miles: number;
+  receipts_total: number;
+  tolls_total: number;
+  mileage_total: number;
+  total: number;
+};
+
+export type AdminEventDetailIssue = {
+  type: string;
+  message: string;
+  employee_id?: string;
+  employee_name?: string;
+  expense_id?: string;
+};
+
+export type AdminEventDetail = {
+  event: {
+    id: string;
+    event_number: string;
+    name: string;
+    event_date: string;
+    event_type: string | null;
+    venue_name: string | null;
+    venue_address: string | null;
+    client_name: string | null;
+    start_time: string | null;
+    end_time: string | null;
+    status: string | null;
+    created_at: string;
+    updated_at: string;
+  };
+  totals: {
+    total: number;
+    receipts: number;
+    mileage: number;
+    tolls: number;
+    receipt_count: number;
+    mileage_count: number;
+    toll_count: number;
+  };
+  employees: AdminEventDetailEmployee[];
+  expenses: AdminEventDetailExpense[];
+  mileage: AdminEventDetailMileage[];
+  travel_by_employee: AdminEventDetailTravelSummary[];
+  sessions: Array<{
+    id: string;
+    employee_id: string;
+    employee_name: string;
+    started_at: string;
+    ended_at: string | null;
+    planned_miles: string | null;
+    planned_tolls_amount: string | null;
+    planned_mileage_amount: string | null;
+    travel_calculated_at: string | null;
+  }>;
+  issues: AdminEventDetailIssue[];
+  category_breakdown: Array<{ name: string; amount: number }>;
+  activity: Array<{
+    type: string;
+    occurred_at: string;
+    employee_name: string;
+    label: string;
+    detail: string;
+  }>;
+  documents: AdminEventDetailAttachment[];
+};
+
+export async function getAdminEventDetail(
+  adminUserId: string,
+  eventId: string,
+): Promise<AdminEventDetail> {
+  const response = await fetch(
+    `/api/events/admin/${eventId}/detail?requesting_user_id=${encodeURIComponent(adminUserId)}`,
+  );
+  const body = await response.json();
+  if (!response.ok) {
+    throw new Error(body.error ?? "Could not load event detail");
   }
   return body;
 }
@@ -1232,6 +1409,7 @@ export type ReceiptAnalysis = {
     id: string;
     event_number: string;
     name: string;
+    event_date: string;
   } | null;
 };
 
