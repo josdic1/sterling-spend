@@ -1,0 +1,10 @@
+Sterling Spend — Admin Events pass
+
+- Adds Controller > Events
+- Lists existing events
+- Creates and edits events using existing events table
+- Assigns active users to events using existing event_assignments table
+- Preserves event records; no delete flow added
+- Audits event creation/updates
+- Renames Live inactive state from "Deactivated" to "No active event"
+- No database migration required

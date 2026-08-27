@@ -1,0 +1,108 @@
+.login-screen {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: #f3f6fa;
+  color: #202735;
+}
+
+.login-shell {
+  width: min(100%, 420px);
+  display: grid;
+  gap: 28px;
+}
+
+.dev-login-buttons {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  padding-inline: 28px;
+}
+
+.dev-login-buttons button {
+  min-height: 66px;
+  border: 1px solid #202735;
+  border-radius: 18px;
+  background: transparent;
+  color: #202735;
+  font: inherit;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  cursor: pointer;
+}
+
+.dev-login-buttons button:disabled {
+  opacity: .5;
+  cursor: default;
+}
+
+.login-card {
+  width: 100%;
+  background: white;
+  border: 1px solid #e4e8ef;
+  border-radius: 24px;
+  padding: 32px;
+}
+
+.login-brand {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  margin-bottom: 40px;
+  letter-spacing: .06em;
+}
+
+.login-brand strong { font-size: 18px; }
+.login-brand span { color: #8a94a6; font-size: 14px; letter-spacing: 0; }
+.login-heading h1 { margin: 0; font-size: 34px; }
+.login-heading p { margin: 8px 0 26px; color: #7a8496; }
+.login-card form { display: grid; gap: 18px; }
+.login-card label { display: grid; gap: 7px; }
+.login-card label span { font-size: 12px; font-weight: 800; color: #7e899c; text-transform: uppercase; letter-spacing: .08em; }
+.login-card input { width: 100%; box-sizing: border-box; border: 1px solid #d9dee7; border-radius: 12px; padding: 14px 15px; font: inherit; font-size: 16px; }
+.login-card input:focus { outline: 2px solid #38b4c7; outline-offset: 1px; border-color: transparent; }
+.login-card button { min-height: 52px; border: 0; border-radius: 14px; background: #39b4c7; color: white; font: inherit; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; }
+.login-card button:disabled { opacity: .55; cursor: default; }
+.login-error { padding: 12px 14px; border-radius: 12px; background: #fff0f0; color: #a33a3a; font-size: 14px; }
+
+.dev-reset-panel {
+  display: grid;
+  gap: 10px;
+  padding-inline: 12px;
+}
+
+.dev-reset-panel > span {
+  color: #8a94a6;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .09em;
+  text-align: center;
+}
+
+.dev-reset-panel button {
+  min-height: 48px;
+  border: 1px solid #c6ccd6;
+  border-radius: 12px;
+  background: transparent;
+  color: #202735;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .02em;
+  cursor: pointer;
+}
+
+.dev-reset-panel button:disabled {
+  opacity: .5;
+  cursor: default;
+}
+
+.dev-reset-success {
+  margin: 2px 0 0;
+  color: #526071;
+  font-size: 12px;
+  line-height: 1.45;
+  text-align: center;
+}

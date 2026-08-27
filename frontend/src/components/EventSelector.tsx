@@ -4,12 +4,12 @@ import { format } from "date-fns";
 import {
   activateEvent,
   getAssignedEvents,
-  TEST_EMPLOYEE_ID,
   type AssignedEvent,
 } from "../lib/api";
 import "./EventSelector.css";
 
 type EventSelectorProps = {
+  userId: string;
   onCancel: () => void;
   onActivated: () => void;
 };
@@ -22,6 +22,7 @@ function formatEventDate(value: string) {
 }
 
 export default function EventSelector({
+  userId,
   onCancel,
   onActivated,
 }: EventSelectorProps) {
@@ -37,7 +38,7 @@ export default function EventSelector({
         setError("");
 
         const result = await getAssignedEvents(
-          TEST_EMPLOYEE_ID,
+          userId,
         );
 
         setEvents(result);
@@ -49,7 +50,7 @@ export default function EventSelector({
     }
 
     void loadEvents();
-  }, []);
+  }, [userId]);
 
   async function handleActivate(eventId: string) {
     try {
@@ -58,7 +59,7 @@ export default function EventSelector({
 
       await activateEvent(
         eventId,
-        TEST_EMPLOYEE_ID,
+        userId,
       );
 
       onActivated();

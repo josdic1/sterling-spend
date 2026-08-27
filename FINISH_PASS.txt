@@ -1,0 +1,15 @@
+Sterling Spend finish pass — 2026-08-26
+
+Changes:
+- Active Event automatically ensures mileage exists using the existing Google route calculation.
+- Normal employee "Log a trip" action removed.
+- Receipts/toll capture remain unchanged.
+- Admin gets a Live view of active/deactivated employees and their active Event.
+- Activating a different Event no longer silently ends the existing active Event.
+- 006 corrective migration retained; no 007 Trip schema exists.
+
+Intentionally NOT invented here:
+- Native/Capacitor GPS implementation.
+- Final Trip database schema.
+- Generic issue/expected-total models.
+- New submission grain.

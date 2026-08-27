@@ -1,0 +1,14 @@
+Sterling Spend — Submission / Review Integrity Pass
+2026-08-27
+
+Confirmed behavior implemented:
+- Employee cannot submit while an Event is active.
+- Unassigned/rogue receipts are hard submission blockers.
+- Known issues (toll mismatch/missing toll evidence, possible duplicate) remain soft issues for employee submission after explicit acknowledgment.
+- Jill sees full issue details.
+- Jill must resolve each known issue with a reason before marking the reimbursement reviewed.
+- Issue resolution is preserved in audit_log; no Issue table added.
+- Jill can adjust or explicitly disallow expense/mileage items with a required reason.
+- Jill can add review notes; notes are audited.
+- Original employee claim remains intact.
+- No database migration required.

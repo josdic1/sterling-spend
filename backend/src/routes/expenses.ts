@@ -17,6 +17,7 @@ const createExpenseSchema = z.object({
 const adjustExpenseSchema = z.object({
   approved_amount: z.number().nonnegative(),
   changed_by_user_id: z.string().uuid(),
+  reason: z.string().trim().min(1).max(500),
 });
 
 router.get("/current/:userId", async (req, res) => {
@@ -87,6 +88,23 @@ router.post("/", async (req, res) => {
   try {
     await client.query("BEGIN");
 
+    const userResult = await client.query(
+      `
+        SELECT id
+        FROM users
+        WHERE id = $1
+          AND is_active = TRUE
+      `,
+      [user_id],
+    );
+
+    if (userResult.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return res.status(403).json({
+        error: "Inactive users cannot add expenses",
+      });
+    }
+
     const activeEventResult = await client.query(
       `
         SELECT event_id
@@ -99,54 +117,90 @@ router.post("/", async (req, res) => {
       [user_id],
     );
 
+    const activeEventId =
+      activeEventResult.rows[0]?.event_id ?? null;
+
+    if (!activeEventId && event_id) {
+      const assignmentResult = await client.query(
+        `
+          SELECT 1
+          FROM event_assignments
+          WHERE user_id = $1
+            AND event_id = $2
+        `,
+        [user_id, event_id],
+      );
+
+      if (assignmentResult.rows.length === 0) {
+        await client.query("ROLLBACK");
+        return res.status(403).json({
+          error: "Choose an event assigned to this employee",
+        });
+      }
+    }
+
     const resolvedEventId =
-      activeEventResult.rows[0]?.event_id ?? event_id ?? null;
+      activeEventId ?? event_id ?? null;
 
-    await client.query(
+    let reimbursementResult = await client.query(
       `
-        INSERT INTO reimbursements (
-          user_id,
-          year,
-          month
-        )
-        VALUES ($1, $2, $3)
-        ON CONFLICT (user_id, year, month)
-        DO NOTHING
-      `,
-      [user_id, year, month],
-    );
-
-    const reimbursementResult = await client.query(
-      `
-        SELECT
-          id,
-          status
+        SELECT id, status
         FROM reimbursements
         WHERE user_id = $1
           AND year = $2
           AND month = $3
+          AND status = 'open'
+        ORDER BY created_at DESC
+        LIMIT 1
         FOR UPDATE
       `,
       [user_id, year, month],
     );
 
     if (reimbursementResult.rows.length === 0) {
+      reimbursementResult = await client.query(
+        `
+          INSERT INTO reimbursements (
+            user_id,
+            year,
+            month
+          )
+          VALUES ($1, $2, $3)
+          ON CONFLICT (user_id, year, month)
+            WHERE status = 'open'
+          DO NOTHING
+          RETURNING id, status
+        `,
+        [user_id, year, month],
+      );
+
+      if (reimbursementResult.rows.length === 0) {
+        reimbursementResult = await client.query(
+          `
+            SELECT id, status
+            FROM reimbursements
+            WHERE user_id = $1
+              AND year = $2
+              AND month = $3
+              AND status = 'open'
+            ORDER BY created_at DESC
+            LIMIT 1
+            FOR UPDATE
+          `,
+          [user_id, year, month],
+        );
+      }
+    }
+
+    if (reimbursementResult.rows.length === 0) {
       await client.query("ROLLBACK");
 
       return res.status(500).json({
-        error: "Could not find or create reimbursement",
+        error: "Could not create a working expense record",
       });
     }
 
     const reimbursement = reimbursementResult.rows[0];
-
-    if (reimbursement.status !== "open") {
-      await client.query("ROLLBACK");
-
-      return res.status(400).json({
-        error: "Only open reimbursements can receive new expenses",
-      });
-    }
 
     const expenseResult = await client.query(
       `
@@ -197,7 +251,7 @@ router.patch("/:expenseId/approved-amount", async (req, res) => {
     });
   }
 
-  const { approved_amount, changed_by_user_id } = parsed.data;
+  const { approved_amount, changed_by_user_id, reason } = parsed.data;
 
   const client = await db.connect();
 
@@ -275,7 +329,8 @@ router.patch("/:expenseId/approved-amount", async (req, res) => {
           field_name,
           old_value,
           new_value,
-          changed_by_user_id
+          changed_by_user_id,
+          reason
         )
         VALUES (
           'expense',
@@ -284,7 +339,8 @@ router.patch("/:expenseId/approved-amount", async (req, res) => {
           'approved_amount',
           $2,
           $3,
-          $4
+          $4,
+          $5
         )
       `,
       [
@@ -292,6 +348,7 @@ router.patch("/:expenseId/approved-amount", async (req, res) => {
         String(oldValue),
         String(approved_amount),
         changed_by_user_id,
+        reason,
       ],
     );
 

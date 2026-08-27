@@ -14,7 +14,6 @@ import {
   Camera,
   Car,
   ChevronRight,
-  ClipboardCheck,
   MapPin,
   ReceiptText,
   Route as RouteIcon,
@@ -24,18 +23,25 @@ import ActiveEventDetail from "./components/ActiveEventDetail";
 import AdminQueue from "./components/AdminQueue";
 import AdminReimbursementDetail from "./components/AdminReimbursementDetail";
 import EventSelector from "./components/EventSelector";
-import MileageCapture from "./components/MileageCapture";
 import ReceiptCapture from "./components/ReceiptCapture";
 import ReimbursementReview from "./components/ReimbursementReview";
+import LoginScreen from "./components/LoginScreen";
+import { useAuth } from "./auth";
 import {
+  ensureAutomaticTravel,
   getActiveEvent,
   getCurrentReimbursement,
-  TEST_EMPLOYEE_ID,
   type ActiveEvent,
   type CurrentReimbursement,
 } from "./lib/api";
 
 type CaptureMode = "receipt" | "toll";
+
+type EmployeeHomeProps = {
+  userId: string;
+  isAdmin: boolean;
+  onLogout: () => Promise<void>;
+};
 
 function formatMoney(value: string | number) {
   return new Intl.NumberFormat("en-US", {
@@ -48,7 +54,7 @@ function formatMonth(year: number, month: number) {
   return format(new Date(year, month - 1, 1), "MMMM");
 }
 
-function EmployeeHome() {
+function EmployeeHome({ userId, isAdmin, onLogout }: EmployeeHomeProps) {
   const navigate = useNavigate();
   const receiptInputRef = useRef<HTMLInputElement>(null);
 
@@ -60,7 +66,6 @@ function EmployeeHome() {
     useState<File | null>(null);
   const [captureMode, setCaptureMode] =
     useState<CaptureMode>("receipt");
-  const [showMileage, setShowMileage] = useState(false);
   const [showEventSelector, setShowEventSelector] =
     useState(false);
   const [showActiveEvent, setShowActiveEvent] =
@@ -69,6 +74,7 @@ function EmployeeHome() {
     useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [travelWarning, setTravelWarning] = useState("");
 
   const loadHome = useCallback(async () => {
     try {
@@ -77,18 +83,42 @@ function EmployeeHome() {
 
       const [reimbursementResult, activeEventResult] =
         await Promise.all([
-          getCurrentReimbursement(TEST_EMPLOYEE_ID),
-          getActiveEvent(TEST_EMPLOYEE_ID),
+          getCurrentReimbursement(userId),
+          getActiveEvent(userId),
         ]);
 
-      setReimbursement(reimbursementResult);
-      setActiveEvent(activeEventResult);
+      let resolvedReimbursement = reimbursementResult;
+      let resolvedActiveEvent = activeEventResult;
+      setTravelWarning("");
+
+      if (activeEventResult) {
+        try {
+          const created = await ensureAutomaticTravel(userId);
+
+          if (created) {
+            [resolvedReimbursement, resolvedActiveEvent] =
+              await Promise.all([
+                getCurrentReimbursement(userId),
+                getActiveEvent(userId),
+              ]);
+          }
+        } catch (caughtError) {
+          setTravelWarning(
+            caughtError instanceof Error
+              ? caughtError.message
+              : "Could not calculate travel automatically.",
+          );
+        }
+      }
+
+      setReimbursement(resolvedReimbursement);
+      setActiveEvent(resolvedActiveEvent);
     } catch {
       setError("Could not load Sterling Spend.");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
     void loadHome();
@@ -122,11 +152,6 @@ function EmployeeHome() {
     setCaptureMode("receipt");
   }
 
-  async function handleMileageSaved() {
-    setShowMileage(false);
-    await loadHome();
-  }
-
   async function handleEventActivated() {
     setShowEventSelector(false);
     await loadHome();
@@ -146,6 +171,7 @@ function EmployeeHome() {
     return (
       <div className="employee-app">
         <ReceiptCapture
+          userId={userId}
           file={receiptFile}
           mode={captureMode}
           onCancel={handleReceiptCancel}
@@ -157,23 +183,11 @@ function EmployeeHome() {
     );
   }
 
-  if (showMileage) {
-    return (
-      <div className="employee-app">
-        <MileageCapture
-          onCancel={() => setShowMileage(false)}
-          onSaved={() => {
-            void handleMileageSaved();
-          }}
-        />
-      </div>
-    );
-  }
-
   if (showEventSelector) {
     return (
       <div className="employee-app">
         <EventSelector
+          userId={userId}
           onCancel={() => setShowEventSelector(false)}
           onActivated={() => {
             void handleEventActivated();
@@ -201,6 +215,7 @@ function EmployeeHome() {
     return (
       <div className="employee-app">
         <ReimbursementReview
+          userId={userId}
           reimbursement={reimbursement}
           onCancel={() => setShowReimbursement(false)}
           onSubmitted={() => {
@@ -227,8 +242,21 @@ function EmployeeHome() {
     );
   }
 
-  const canAdd =
-    !reimbursement || reimbursement.status === "open";
+  const activeTravelAlreadyListed = Boolean(
+    activeEvent &&
+      reimbursement?.mileage.some(
+        (entry) =>
+          entry.event_session_id === activeEvent.session_id,
+      ),
+  );
+
+  const showActiveTravel = Boolean(
+    activeEvent?.planned_miles !== null &&
+      activeEvent?.planned_miles !== undefined &&
+      activeEvent?.planned_mileage_amount !== null &&
+      activeEvent?.planned_mileage_amount !== undefined &&
+      !activeTravelAlreadyListed,
+  );
 
   return (
     <div className="employee-app">
@@ -238,14 +266,25 @@ function EmployeeHome() {
           <span> Spend</span>
         </div>
 
-        <button
-          type="button"
-          className="controller-link"
-          onClick={() => navigate("/admin")}
-        >
-          <ClipboardCheck size={17} />
-          Review
-        </button>
+        <div className="employee-topbar-actions">
+          {isAdmin && (
+            <button
+              type="button"
+              className="controller-link"
+              onClick={() => navigate("/admin")}
+            >
+              Admin
+            </button>
+          )}
+
+          <button
+            type="button"
+            className="employee-signout"
+            onClick={() => { void onLogout(); }}
+          >
+            Sign out
+          </button>
+        </div>
       </header>
 
       <main className="employee-page">
@@ -290,6 +329,12 @@ function EmployeeHome() {
           </button>
         )}
 
+        {travelWarning && (
+          <div className="employee-warning" role="status">
+            Travel calculation needs attention: {travelWarning}
+          </div>
+        )}
+
         <section className="capture-section">
           <input
             ref={receiptInputRef}
@@ -303,7 +348,6 @@ function EmployeeHome() {
           <button
             type="button"
             className="receipt-action"
-            disabled={!canAdd}
             onClick={() => openCapture("receipt")}
           >
             <span className="receipt-icon">
@@ -312,40 +356,20 @@ function EmployeeHome() {
 
             <span>
               <strong>Receipt</strong>
-              <small>
-                {canAdd ? "Snap it now" : "Month submitted"}
-              </small>
+              <small>Snap it now</small>
             </span>
           </button>
 
-          <div className="secondary-actions">
+          <div className="secondary-actions single-action">
             <button
               type="button"
-              disabled={!canAdd}
-              onClick={() => setShowMileage(true)}
-            >
-              <Car size={23} />
-
-              <span>
-                <strong>Mileage</strong>
-                <small>
-                  {canAdd ? "Log a trip" : "Locked"}
-                </small>
-              </span>
-            </button>
-
-            <button
-              type="button"
-              disabled={!canAdd}
               onClick={() => openCapture("toll")}
             >
               <RouteIcon size={23} />
 
               <span>
                 <strong>Toll</strong>
-                <small>
-                  {canAdd ? "Add receipt" : "Locked"}
-                </small>
+                <small>Add receipt</small>
               </span>
             </button>
           </div>
@@ -389,9 +413,10 @@ function EmployeeHome() {
             <span>RECENT</span>
           </div>
 
-          {!reimbursement ||
-          (reimbursement.expenses.length === 0 &&
-            reimbursement.mileage.length === 0) ? (
+          {(!reimbursement ||
+            (reimbursement.expenses.length === 0 &&
+              reimbursement.mileage.length === 0)) &&
+          !showActiveTravel ? (
             <div className="recent-empty">
               <ReceiptText size={24} />
               <strong>No activity yet</strong>
@@ -399,7 +424,31 @@ function EmployeeHome() {
             </div>
           ) : (
             <div className="activity-list">
-              {reimbursement.expenses.map((expense) => (
+              {showActiveTravel && activeEvent && (
+                <article className="activity-row">
+                  <div className="activity-icon">
+                    <Car size={19} />
+                  </div>
+
+                  <div className="activity-copy">
+                    <div className="activity-title">
+                      <strong>Mileage</strong>
+
+                      <strong>
+                        {formatMoney(
+                          activeEvent.planned_mileage_amount ?? 0,
+                        )}
+                      </strong>
+                    </div>
+
+                    <p>
+                      {activeEvent.planned_miles} mi · {activeEvent.name}
+                    </p>
+                  </div>
+                </article>
+              )}
+
+              {reimbursement?.expenses.map((expense) => (
                 <article
                   className="activity-row"
                   key={expense.id}
@@ -429,7 +478,7 @@ function EmployeeHome() {
                 </article>
               ))}
 
-              {reimbursement.mileage.map((entry) => {
+              {reimbursement?.mileage.map((entry) => {
                 const amount =
                   Number(entry.claimed_miles) *
                   Number(entry.rate_per_mile);
@@ -470,7 +519,7 @@ function EmployeeHome() {
   );
 }
 
-function AdminWorkspace() {
+function AdminWorkspace({ adminUserId }: { adminUserId: string }) {
   const navigate = useNavigate();
 
   const [selectedReimbursementId, setSelectedReimbursementId] =
@@ -479,6 +528,7 @@ function AdminWorkspace() {
   if (selectedReimbursementId) {
     return (
       <AdminReimbursementDetail
+        adminUserId={adminUserId}
         reimbursementId={selectedReimbursementId}
         onBack={() => setSelectedReimbursementId(null)}
         onReviewed={() => setSelectedReimbursementId(null)}
@@ -488,6 +538,7 @@ function AdminWorkspace() {
 
   return (
     <AdminQueue
+      adminUserId={adminUserId}
       onClose={() => navigate("/")}
       onOpenReimbursement={(reimbursementId) =>
         setSelectedReimbursementId(reimbursementId)
@@ -497,14 +548,47 @@ function AdminWorkspace() {
 }
 
 function App() {
+  const { user, loading, logout } = useAuth();
+
+  if (loading) {
+    return (
+      <main className="employee-page">
+        <div className="employee-loading">Loading…</div>
+      </main>
+    );
+  }
+
+  if (!user) {
+    return (
+      <Routes>
+        <Route path="*" element={<LoginScreen />} />
+      </Routes>
+    );
+  }
+
   return (
     <Routes>
-      <Route path="/" element={<EmployeeHome />} />
-      <Route path="/admin" element={<AdminWorkspace />} />
       <Route
-        path="*"
-        element={<Navigate to="/" replace />}
+        path="/"
+        element={
+          <EmployeeHome
+            userId={user.id}
+            isAdmin={user.role === "admin"}
+            onLogout={logout}
+          />
+        }
       />
+      <Route
+        path="/admin"
+        element={
+          user.role === "admin" ? (
+            <AdminWorkspace adminUserId={user.id} />
+          ) : (
+            <Navigate to="/" replace />
+          )
+        }
+      />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }

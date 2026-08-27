@@ -1,0 +1,38 @@
+STERLING SPEND — TODAY + DEV RESET PASS — 2026-08-27
+
+CONFIRMED PRODUCT BEHAVIOR IMPLEMENTED
+- Controller default landing is TODAY (replaces Live wording).
+- Assignment and activation are separate:
+  - Assigned = employee has access/responsibility for today's Event.
+  - Active = employee is currently working/traveling the Event.
+- Today employee rows are clickable.
+- Today detail is read-only and shows live saved information before submission:
+  - today's assigned Event(s)
+  - Active / Not active
+  - receipts already saved to those Event(s)
+  - automatic mileage
+  - planned tolls vs toll evidence
+  - running total
+  - current toll/unassigned-receipt issues
+- Today status refreshes periodically; employee Today detail refreshes every 15 seconds.
+
+DEVELOPMENT-ONLY RESET CONTROLS
+- Login screen keeps JILL / JOSH quick-login buttons.
+- Adds:
+  - CLEAR ALL DATA EXCEPT USERS
+  - CLEAR ALL DATA EXCEPT USERS AND EVENTS
+- Both require browser confirmation.
+- Both clear R2 receipt/check-stub objects as well as matching PostgreSQL activity.
+- KEEP USERS preserves all users, not only Jill/Josh.
+- KEEP USERS AND EVENTS also preserves Event assignments so the retained Events remain assigned.
+- Expense categories, mileage rates, schema migrations and other reference/schema data are untouched.
+- Reset endpoints return 404 in NODE_ENV=production and reset buttons render only in Vite DEV.
+
+NO PRODUCT/SCHEMA CHANGES
+- No migration.
+- No reimbursement lifecycle changes.
+- No expense ownership changes.
+- No Event activation changes.
+- No mileage/toll calculation changes.
+- No Trip schema.
+- No production reset controls.

@@ -1,0 +1,13 @@
+Sterling Spend — Admin User Management Pass
+
+Confirmed product truth implemented:
+- Admin can add new employees.
+- Admin can deactivate/reactivate users without deleting historical records.
+- Only two roles remain: user/admin.
+- New roster entries created here are normal users.
+- Deactivation ends any currently active Event for that user.
+- Inactive users cannot activate assigned Events or add new expenses/mileage.
+- User creation/deactivation/reactivation is audited.
+- Controller navigation now uses truthful section headings (Live, People, Needs review, Reviewed, Paid).
+
+No database migration is required; users.is_active already exists.

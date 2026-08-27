@@ -1,0 +1,239 @@
+.admin-today-detail {
+  display: grid;
+  gap: 18px;
+  padding-bottom: 28px;
+}
+
+.admin-today-back {
+  width: fit-content;
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--color-ink);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.admin-today-person {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 18px;
+  padding: 18px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-lg);
+  background: var(--color-card);
+}
+
+.admin-today-person > div:first-child {
+  display: grid;
+  gap: 3px;
+}
+
+.admin-today-person span,
+.admin-today-person p {
+  color: var(--color-subtle);
+  font-size: 12px;
+}
+
+.admin-today-person > div:first-child > span {
+  font-weight: 800;
+  letter-spacing: .07em;
+}
+
+.admin-today-person h2,
+.admin-today-person p {
+  margin: 0;
+}
+
+.admin-today-person h2 {
+  font-size: 24px;
+}
+
+.admin-today-statuses {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.admin-today-status {
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: #edf0f4;
+  color: var(--color-subtle) !important;
+  font-weight: 800;
+}
+
+.admin-today-status.assigned {
+  background: var(--color-blue-soft);
+  color: var(--color-primary-strong) !important;
+}
+
+.admin-today-status.active {
+  background: #202735;
+  color: white !important;
+}
+
+.admin-today-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.admin-today-summary > div {
+  display: grid;
+  gap: 5px;
+  padding: 14px;
+  border-radius: 14px;
+  background: var(--color-card);
+  border: 1px solid var(--color-line);
+}
+
+.admin-today-summary span,
+.admin-today-row span,
+.admin-today-assignment span,
+.admin-today-toll-line span,
+.admin-today-issue span {
+  color: var(--color-subtle);
+  font-size: 12px;
+}
+
+.admin-today-summary strong {
+  font-size: 18px;
+}
+
+.admin-today-section {
+  display: grid;
+  gap: 10px;
+}
+
+.admin-today-section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-today-section-title h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.admin-today-section-title > span {
+  min-width: 23px;
+  height: 23px;
+  display: grid;
+  place-items: center;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #edf0f4;
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.admin-today-assignment-list,
+.admin-today-rows,
+.admin-today-travel-list,
+.admin-today-issues {
+  display: grid;
+  gap: 8px;
+}
+
+.admin-today-assignment,
+.admin-today-row,
+.admin-today-travel,
+.admin-today-issue,
+.admin-today-empty,
+.admin-today-message {
+  padding: 14px 15px;
+  border: 1px solid var(--color-line);
+  border-radius: 14px;
+  background: var(--color-card);
+}
+
+.admin-today-assignment {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.admin-today-assignment > strong {
+  margin-right: auto;
+}
+
+.admin-today-inline-active {
+  color: var(--color-ink) !important;
+  font-weight: 900;
+}
+
+.admin-today-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.admin-today-row > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.admin-today-travel {
+  display: grid;
+  gap: 8px;
+}
+
+.admin-today-travel .admin-today-row {
+  padding: 0 0 9px;
+  border: 0;
+  border-radius: 0;
+  border-bottom: 1px solid var(--color-line);
+}
+
+.admin-today-toll-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.admin-today-issue {
+  display: grid;
+  gap: 3px;
+}
+
+.admin-today-empty,
+.admin-today-message {
+  margin: 0;
+  color: var(--color-subtle);
+  font-size: 13px;
+}
+
+.admin-today-error {
+  color: var(--color-orange);
+}
+
+@media (max-width: 600px) {
+  .admin-today-person {
+    display: grid;
+  }
+
+  .admin-today-statuses {
+    justify-content: flex-start;
+  }
+
+  .admin-today-summary {
+    grid-template-columns: 1fr;
+  }
+}

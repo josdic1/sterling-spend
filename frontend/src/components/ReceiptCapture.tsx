@@ -4,6 +4,7 @@ import {
   CheckCircle2,
   CircleAlert,
   LoaderCircle,
+  MapPin,
   Route as RouteIcon,
   X,
 } from "lucide-react";
@@ -11,15 +12,18 @@ import { format } from "date-fns";
 import {
   analyzeReceipt,
   createExpense,
+  getAssignedEvents,
   getExpenseCategories,
-  TEST_EMPLOYEE_ID,
+  getNearbyVendorSuggestions,
   uploadExpenseReceipt,
+  type AssignedEvent,
   type ExpenseCategory,
   type ReceiptAnalysis,
 } from "../lib/api";
 import "./ReceiptCapture.css";
 
 type ReceiptCaptureProps = {
+  userId: string;
   file: File;
   onCancel: () => void;
   onSaved: () => void;
@@ -40,7 +44,15 @@ function formatExpenseDate(value: string) {
   );
 }
 
+function localDateKey(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export default function ReceiptCapture({
+  userId,
   file,
   onCancel,
   onSaved,
@@ -53,6 +65,17 @@ export default function ReceiptCapture({
     ExpenseCategory[]
   >([]);
 
+  const [assignedEvents, setAssignedEvents] = useState<
+    AssignedEvent[]
+  >([]);
+
+  const [eventId, setEventId] = useState("");
+  const [vendor, setVendor] = useState("");
+  const [vendorSuggestions, setVendorSuggestions] = useState<
+    Array<{ id: string | null; name: string; address: string | null }>
+  >([]);
+  const [findingVendor, setFindingVendor] = useState(false);
+  const [vendorSuggestionError, setVendorSuggestionError] = useState("");
   const [amount, setAmount] = useState("");
   const [expenseDate, setExpenseDate] = useState("");
   const [categoryId, setCategoryId] = useState("");
@@ -71,25 +94,32 @@ export default function ReceiptCapture({
         setAnalyzing(true);
         setError("");
 
-        const [result, categoryResult] =
+        const [result, categoryResult, eventResult] =
           await Promise.all([
             analyzeReceipt(
-              TEST_EMPLOYEE_ID,
+              userId,
               file,
             ),
             getExpenseCategories(),
+            getAssignedEvents(userId),
           ]);
 
         if (cancelled) {
           return;
         }
 
-        setAnalysis(result);
-        setCategories(
+        const activeCategories =
           categoryResult.filter(
             (category) => category.is_active,
-          ),
-        );
+          );
+
+        setAnalysis(result);
+        setCategories(activeCategories);
+        setAssignedEvents(eventResult);
+        setEventId(result.active_event?.id ?? "");
+        setVendor(result.vendor ?? "");
+        setVendorSuggestions([]);
+        setVendorSuggestionError("");
 
         setAmount(
           result.amount !== null
@@ -97,13 +127,34 @@ export default function ReceiptCapture({
             : "",
         );
 
+        const captureDate = localDateKey();
         setExpenseDate(
-          result.expense_date ?? "",
+          result.active_event
+            ? (result.expense_date ?? captureDate)
+            : (result.expense_date ?? ""),
         );
 
-        setCategoryId(
-          result.category_id ?? "",
-        );
+        if (isToll) {
+          const tollCategory =
+            activeCategories.find(
+              (category) =>
+                category.name.trim().toLowerCase() ===
+                "tolls",
+            );
+
+          if (!tollCategory) {
+            setCategoryId("");
+            setError(
+              "The Tolls category is not configured.",
+            );
+          } else {
+            setCategoryId(tollCategory.id);
+          }
+        } else {
+          setCategoryId(
+            result.category_id ?? "",
+          );
+        }
       } catch (caughtError) {
         if (!cancelled) {
           setError(
@@ -124,31 +175,119 @@ export default function ReceiptCapture({
     return () => {
       cancelled = true;
     };
-  }, [file]);
+  }, [file, isToll]);
 
   const needsAmount =
     analysis?.amount === null;
 
+  const needsVendor =
+    !isToll &&
+    analysis?.vendor === null;
+
+  const captureDate = localDateKey();
+  const hasActiveEvent = analysis?.active_event !== null;
+  const receiptDateDiffersFromCapture =
+    Boolean(analysis?.active_event) &&
+    analysis?.expense_date !== null &&
+    analysis?.expense_date !== captureDate;
+
+  // During an active Event, capture date is already known. Only surface
+  // the receipt date when OCR explicitly found a different date.
+  const showDateField =
+    Boolean(analysis) &&
+    (!hasActiveEvent || receiptDateDiffersFromCapture);
+
   const needsDate =
+    !hasActiveEvent &&
     analysis?.expense_date === null;
 
   const needsCategory =
+    !isToll &&
     analysis?.category_id === null;
 
-  const missingCount =
-    Number(needsAmount) +
-    Number(needsDate) +
-    Number(needsCategory);
+  const receiptIssues = [
+    needsAmount ? "Amount not found" : null,
+    needsVendor ? "Vendor not found" : null,
+    needsDate ? "Date not found" : null,
+    needsCategory ? "Category not determined" : null,
+    receiptDateDiffersFromCapture && analysis?.expense_date
+      ? `Check date — receipt says ${formatExpenseDate(analysis.expense_date)}`
+      : null,
+  ].filter((issue): issue is string => issue !== null);
+
+  const missingCount = receiptIssues.length;
 
   const numericAmount = Number(amount);
+
+  const needsEvent =
+    analysis !== null &&
+    analysis.active_event === null;
 
   const canSave =
     analysis !== null &&
     amount.trim() !== "" &&
     Number.isFinite(numericAmount) &&
     numericAmount > 0 &&
+    (isToll || vendor.trim() !== "") &&
     expenseDate !== "" &&
-    categoryId !== "";
+    categoryId !== "" &&
+    (!needsEvent || eventId !== "");
+
+  async function handleFindNearbyVendor() {
+    if (!analysis || analysis.vendor !== null) {
+      return;
+    }
+
+    if (!("geolocation" in navigator)) {
+      setVendorSuggestionError(
+        "Location is not available on this device.",
+      );
+      return;
+    }
+
+    try {
+      setFindingVendor(true);
+      setVendorSuggestionError("");
+      setVendorSuggestions([]);
+
+      const position = await new Promise<GeolocationPosition>(
+        (resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(
+            resolve,
+            reject,
+            {
+              enableHighAccuracy: false,
+              timeout: 8000,
+              maximumAge: 60000,
+            },
+          );
+        },
+      );
+
+      const suggestions = await getNearbyVendorSuggestions({
+        user_id: userId,
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+        accuracy_meters: position.coords.accuracy,
+      });
+
+      setVendorSuggestions(suggestions);
+
+      if (suggestions.length === 0) {
+        setVendorSuggestionError(
+          "No nearby vendor suggestion found.",
+        );
+      }
+    } catch (caughtError) {
+      setVendorSuggestionError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Could not suggest a nearby vendor.",
+      );
+    } finally {
+      setFindingVendor(false);
+    }
+  }
 
   async function handleSave() {
     if (!analysis || !canSave) {
@@ -160,16 +299,17 @@ export default function ReceiptCapture({
       setError("");
 
       const expense = await createExpense({
-        user_id: TEST_EMPLOYEE_ID,
+        user_id: userId,
+        event_id: eventId || undefined,
         category_id: categoryId,
         expense_date: expenseDate,
         claimed_amount: amount,
-        vendor: analysis.vendor ?? undefined,
+        vendor: vendor.trim() || undefined,
       });
 
       await uploadExpenseReceipt(
         expense.id,
-        TEST_EMPLOYEE_ID,
+        userId,
         file,
       );
 
@@ -178,7 +318,9 @@ export default function ReceiptCapture({
       setError(
         caughtError instanceof Error
           ? caughtError.message
-          : "Could not save expense.",
+          : isToll
+            ? "Could not save toll."
+            : "Could not save expense.",
       );
     } finally {
       setSaving(false);
@@ -196,7 +338,9 @@ export default function ReceiptCapture({
           <h1>
             {analyzing
               ? "Reading…"
-              : "Confirm receipt"}
+              : isToll
+                ? "Confirm toll"
+                : "Confirm receipt"}
           </h1>
         </div>
 
@@ -220,7 +364,11 @@ export default function ReceiptCapture({
         </div>
 
         <div>
-          <strong>Receipt captured</strong>
+          <strong>
+            {isToll
+              ? "Toll receipt captured"
+              : "Receipt captured"}
+          </strong>
           <span>{file.name}</span>
         </div>
       </div>
@@ -233,10 +381,16 @@ export default function ReceiptCapture({
           />
 
           <div>
-            <strong>Reading your receipt</strong>
+            <strong>
+              {isToll
+                ? "Reading your toll receipt"
+                : "Reading your receipt"}
+            </strong>
+
             <span>
-              Finding the total, vendor, date,
-              category, and event.
+              {isToll
+                ? "Finding the total, vendor, and event."
+                : "Finding the total, vendor, category, and event."}
             </span>
           </div>
         </section>
@@ -256,16 +410,18 @@ export default function ReceiptCapture({
                 <CheckCircle2 size={19} />
               )}
 
-              <strong>
-                {missingCount > 0
-                  ? `Check ${missingCount} detail${
-                      missingCount === 1 ? "" : "s"
-                    }`
-                  : "Receipt read"}
-              </strong>
+              {missingCount > 0 ? (
+                <div className="receipt-issue-summary">
+                  {receiptIssues.map((issue) => (
+                    <strong key={issue}>{issue}</strong>
+                  ))}
+                </div>
+              ) : (
+                <strong>{isToll ? "Toll read" : "Receipt read"}</strong>
+              )}
             </div>
 
-            <div className="receipt-confirm-amount">
+            <div className={`receipt-confirm-amount ${needsAmount ? "receipt-field-warning" : ""}`}>
               <span>AMOUNT</span>
 
               {needsAmount ? (
@@ -293,82 +449,175 @@ export default function ReceiptCapture({
             </div>
 
             <div className="receipt-confirm-details">
-              <div>
-                <span>Vendor</span>
-                <strong>
-                  {analysis.vendor ||
-                    "Couldn’t read"}
-                </strong>
-              </div>
+              {(!isToll || vendor.trim() !== "") && (
+                <div className={needsVendor ? "receipt-detail-edit receipt-field-warning" : undefined}>
+                  <span>{isToll ? "Toll agency/location" : "Vendor"}</span>
 
-              <div>
-                <span>Date</span>
+                  {needsVendor ? (
+                    <div className="receipt-vendor-fallback">
+                      <input
+                        className="receipt-confirm-input"
+                        type="text"
+                        value={vendor}
+                        placeholder="Enter vendor"
+                        onChange={(event) =>
+                          setVendor(event.target.value)
+                        }
+                      />
 
-                {needsDate ? (
-                  <input
-                    className="receipt-confirm-input"
-                    type="date"
-                    value={expenseDate}
-                    onChange={(event) =>
-                      setExpenseDate(
-                        event.target.value,
-                      )
-                    }
-                  />
-                ) : (
-                  <strong>
-                    {formatExpenseDate(expenseDate)}
-                  </strong>
-                )}
-              </div>
-
-              <div>
-                <span>Category</span>
-
-                {needsCategory ? (
-                  <select
-                    className="receipt-confirm-input"
-                    value={categoryId}
-                    onChange={(event) =>
-                      setCategoryId(
-                        event.target.value,
-                      )
-                    }
-                  >
-                    <option value="">
-                      Choose category
-                    </option>
-
-                    {categories.map((category) => (
-                      <option
-                        key={category.id}
-                        value={category.id}
+                      <button
+                        type="button"
+                        className="receipt-nearby-button"
+                        disabled={findingVendor}
+                        onClick={() => {
+                          void handleFindNearbyVendor();
+                        }}
                       >
-                        {category.name}
+                        <MapPin size={15} />
+                        {findingVendor
+                          ? "Finding nearby…"
+                          : "Suggest nearby"}
+                      </button>
+
+                      {vendorSuggestions.length > 0 && (
+                        <div className="receipt-vendor-suggestions">
+                          <span>Nearby suggestions</span>
+                          {vendorSuggestions.map((suggestion, index) => (
+                            <button
+                              key={suggestion.id ?? `${suggestion.name}-${index}`}
+                              type="button"
+                              onClick={() => {
+                                setVendor(suggestion.name);
+                                setVendorSuggestions([]);
+                                setVendorSuggestionError("");
+                              }}
+                            >
+                              <strong>{suggestion.name}</strong>
+                              {suggestion.address && (
+                                <small>{suggestion.address}</small>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {vendorSuggestionError && (
+                        <small className="receipt-vendor-suggestion-error">
+                          {vendorSuggestionError}
+                        </small>
+                      )}
+                    </div>
+                  ) : (
+                    <strong>{vendor}</strong>
+                  )}
+                </div>
+              )}
+
+              {showDateField && (
+                <div className={(needsDate || receiptDateDiffersFromCapture) ? "receipt-detail-edit receipt-field-warning" : undefined}>
+                  <span>Date</span>
+
+                  {needsDate || receiptDateDiffersFromCapture ? (
+                    <div className="receipt-date-check">
+                      <input
+                        className="receipt-confirm-input"
+                        type="date"
+                        value={expenseDate}
+                        onChange={(event) =>
+                          setExpenseDate(
+                            event.target.value,
+                          )
+                        }
+                      />
+                      {receiptDateDiffersFromCapture && (
+                        <small>Receipt date differs from capture date.</small>
+                      )}
+                    </div>
+                  ) : (
+                    <strong>
+                      {formatExpenseDate(expenseDate)}
+                    </strong>
+                  )}
+                </div>
+              )}
+
+              {!isToll && (
+                <div className={needsCategory ? "receipt-field-warning" : undefined}>
+                  <span>Category</span>
+
+                  {needsCategory ? (
+                    <select
+                      className="receipt-confirm-input"
+                      value={categoryId}
+                      onChange={(event) =>
+                        setCategoryId(
+                          event.target.value,
+                        )
+                      }
+                    >
+                      <option value="">
+                        Choose category
                       </option>
-                    ))}
-                  </select>
-                ) : (
-                  <strong>
-                    {analysis.category_name}
-                  </strong>
-                )}
-              </div>
+
+                      {categories.map((category) => (
+                        <option
+                          key={category.id}
+                          value={category.id}
+                        >
+                          {category.name}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <strong>
+                      {analysis.category_name}
+                    </strong>
+                  )}
+                </div>
+              )}
 
               <div>
                 <span>Event</span>
-                <strong>
-                  {analysis.active_event
-                    ? `${analysis.active_event.name} · ${analysis.active_event.event_number}`
-                    : "No active event"}
-                </strong>
+
+                {analysis.active_event ? (
+                  <strong>
+                    {`${analysis.active_event.name} · ${analysis.active_event.event_number}`}
+                  </strong>
+                ) : (
+                  <select
+                    className="receipt-confirm-input"
+                    value={eventId}
+                    onChange={(event) =>
+                      setEventId(event.target.value)
+                    }
+                  >
+                    <option value="">
+                      Choose event
+                    </option>
+
+                    {assignedEvents.map((assignedEvent) => (
+                      <option
+                        key={assignedEvent.id}
+                        value={assignedEvent.id}
+                      >
+                        {assignedEvent.name} · {assignedEvent.event_number}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
             </div>
           </section>
 
-          {missingCount > 0 && (
+          {needsEvent && (
             <p className="receipt-check-note">
-              Check the highlighted detail, then save.
+              Choose the event this expense belongs to. This does not activate the event.
+            </p>
+          )}
+
+          {missingCount > 0 && (
+            <p className="receipt-check-note receipt-check-note-warning">
+              Fix the highlighted {missingCount === 1 ? "field" : "fields"}, then save.
             </p>
           )}
 

@@ -36,6 +36,13 @@ const analyzeBodySchema = z.object({
   user_id: z.string().uuid(),
 });
 
+const nearbyVendorSchema = z.object({
+  user_id: z.string().uuid(),
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+  accuracy_meters: z.number().nonnegative().nullable().optional(),
+});
+
 const receiptExtractionSchema = z.object({
   vendor: z.string().nullable(),
   expense_date: z
@@ -211,5 +218,106 @@ Rules:
     });
   },
 );
+
+
+router.post("/vendor-suggestions", async (req, res) => {
+  const parsed = nearbyVendorSchema.safeParse(req.body);
+
+  if (!parsed.success) {
+    return res.status(400).json({
+      error: "Valid user and location are required",
+    });
+  }
+
+  const {
+    user_id,
+    latitude,
+    longitude,
+    accuracy_meters,
+  } = parsed.data;
+
+  const userResult = await db.query(
+    `SELECT id FROM users WHERE id = $1 AND is_active = TRUE`,
+    [user_id],
+  );
+
+  if (userResult.rows.length === 0) {
+    return res.status(403).json({
+      error: "Only an active user can request vendor suggestions",
+    });
+  }
+
+  const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+
+  if (!apiKey) {
+    return res.status(503).json({
+      error: "Nearby vendor suggestions are not configured",
+    });
+  }
+
+  // Keep this deliberately local: location is only a suggestion signal,
+  // never financial truth. The employee must choose a result before save.
+  const radiusMeters = Math.min(
+    300,
+    Math.max(75, (accuracy_meters ?? 50) * 2),
+  );
+
+  const placesResponse = await fetch(
+    "https://places.googleapis.com/v1/places:searchNearby",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": apiKey,
+        "X-Goog-FieldMask":
+          "places.id,places.displayName,places.formattedAddress",
+      },
+      body: JSON.stringify({
+        maxResultCount: 5,
+        rankPreference: "DISTANCE",
+        locationRestriction: {
+          circle: {
+            center: {
+              latitude,
+              longitude,
+            },
+            radius: radiusMeters,
+          },
+        },
+      }),
+    },
+  );
+
+  if (!placesResponse.ok) {
+    const detail = await placesResponse.text();
+    console.error(
+      "Google Places vendor suggestion failed",
+      placesResponse.status,
+      detail,
+    );
+
+    return res.status(502).json({
+      error: "Nearby vendor suggestions are unavailable",
+    });
+  }
+
+  const payload = (await placesResponse.json()) as {
+    places?: Array<{
+      id?: string;
+      displayName?: { text?: string };
+      formattedAddress?: string;
+    }>;
+  };
+
+  const suggestions = (payload.places ?? [])
+    .map((place) => ({
+      id: place.id ?? null,
+      name: place.displayName?.text?.trim() ?? "",
+      address: place.formattedAddress?.trim() ?? null,
+    }))
+    .filter((place) => place.name.length > 0);
+
+  return res.json({ suggestions });
+});
 
 export default router;

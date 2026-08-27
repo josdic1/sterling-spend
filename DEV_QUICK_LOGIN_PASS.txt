@@ -1,0 +1,10 @@
+Sterling Spend — temporary development quick login
+
+Adds JILL and JOSH buttons above the normal sign-in card.
+- Visible only in Vite development mode (import.meta.env.DEV).
+- Backend /api/auth/dev-login is disabled when NODE_ENV=production.
+- Shortcut is allowlisted to usernames Jill and Josh D only.
+- Normal username/password login remains unchanged.
+- No database migration.
+
+Temporary development convenience; remove before production launch.

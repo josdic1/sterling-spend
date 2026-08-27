@@ -314,3 +314,73 @@
 .reimbursement-review-paid .reimbursement-review-counts strong {
   color: var(--color-ink);
 }
+
+.reimbursement-review-analysis {
+  margin-top: 24px;
+  padding: 18px;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  background: #fff;
+}
+
+.reimbursement-review-analysis-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.reimbursement-review-analysis-heading > div,
+.reimbursement-review-issue {
+  display: grid;
+  gap: 4px;
+}
+
+.reimbursement-review-analysis-heading span,
+.reimbursement-review-issue span {
+  color: #8a94a6;
+  font-size: 0.85rem;
+}
+
+.reimbursement-review-issue {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.reimbursement-review-blockers {
+  margin-top: 24px;
+  padding: 18px;
+  border: 1px solid var(--color-orange);
+  border-radius: 18px;
+  background: var(--color-orange-soft);
+}
+
+.reimbursement-review-blockers .reimbursement-review-analysis-heading svg {
+  color: var(--color-orange);
+}
+
+.reimbursement-submit-blocked {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--color-orange-soft);
+  color: var(--color-orange);
+  font-size: var(--text-sm);
+}
+
+.reimbursement-review-analysis.has-issues {
+  border-color: var(--color-orange);
+  background: var(--color-orange-soft);
+}
+
+.reimbursement-review-analysis.has-issues .reimbursement-review-analysis-heading > svg,
+.reimbursement-review-analysis.has-issues .reimbursement-review-issue-summary strong {
+  color: var(--color-orange);
+}
+
+.reimbursement-review-issue-summary {
+  display: grid;
+  gap: 3px;
+}

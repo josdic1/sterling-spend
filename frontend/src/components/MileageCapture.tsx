@@ -8,17 +8,17 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import {
-  createAutomaticMileage,
   createManualMileage,
+  saveAutomaticTravel,
   getAssignedEvents,
   getAutomaticMileageQuote,
-  TEST_EMPLOYEE_ID,
   type AssignedEvent,
   type AutomaticMileageQuote,
 } from "../lib/api";
 import "./MileageCapture.css";
 
 type MileageCaptureProps = {
+  userId: string;
   onCancel: () => void;
   onSaved: () => void;
 };
@@ -46,6 +46,7 @@ function formatRate(value: number) {
 }
 
 export default function MileageCapture({
+  userId,
   onCancel,
   onSaved,
 }: MileageCaptureProps) {
@@ -70,8 +71,8 @@ export default function MileageCapture({
 
       const [quoteResult, eventsResult] =
         await Promise.allSettled([
-          getAutomaticMileageQuote(TEST_EMPLOYEE_ID),
-          getAssignedEvents(TEST_EMPLOYEE_ID),
+          getAutomaticMileageQuote(userId),
+          getAssignedEvents(userId),
         ]);
 
       if (quoteResult.status === "fulfilled") {
@@ -115,11 +116,14 @@ export default function MileageCapture({
       setSaving(true);
       setError("");
 
-      await createAutomaticMileage({
-        user_id: TEST_EMPLOYEE_ID,
+      await saveAutomaticTravel({
+        user_id: userId,
         event_id: quote.event.id,
         trip_date: quote.event.event_date.slice(0, 10),
-        claimed_miles: quote.route.round_trip_miles,
+        planned_miles: quote.route.round_trip_miles,
+        planned_tolls_amount: quote.tolls.has_tolls
+          ? quote.tolls.estimated_round_trip_amount
+          : 0,
       });
 
       onSaved();
@@ -149,7 +153,7 @@ export default function MileageCapture({
       setError("");
 
       await createManualMileage({
-        user_id: TEST_EMPLOYEE_ID,
+        user_id: userId,
         event_id: selectedEvent.id,
         trip_date: getEventDate(selectedEvent),
         claimed_miles: miles,
@@ -240,7 +244,7 @@ export default function MileageCapture({
             <div className="mileage-results">
               <div>
                 <strong>
-                  {quote.mileage.claimed_miles.toFixed(1)}
+                  {quote.travel.planned_miles.toFixed(1)}
                 </strong>
                 <span>miles round trip</span>
               </div>
@@ -248,12 +252,12 @@ export default function MileageCapture({
               <div>
                 <strong>
                   {formatMoney(
-                    quote.reimbursement_amount,
+                    quote.travel.planned_mileage_amount,
                   )}
                 </strong>
                 <span>
                   {formatRate(
-                    quote.mileage.rate_per_mile,
+                    quote.travel.rate_per_mile,
                   )}
                 </span>
               </div>
@@ -261,8 +265,7 @@ export default function MileageCapture({
           </section>
 
           <p className="mileage-helper">
-            Mileage for this event has already been added
-            to your reimbursement.
+            Travel for this active event is already calculated.
           </p>
 
           <button
@@ -355,6 +358,27 @@ export default function MileageCapture({
                 </span>
               </div>
             </div>
+
+            {quote.tolls.has_tolls && (
+              <div className="mileage-tolls">
+                <div>
+                  <span>EXPECTED TOLLS</span>
+                  <strong>
+                    {quote.tolls.estimated_round_trip_amount !== null
+                      ? formatMoney(
+                          quote.tolls.estimated_round_trip_amount,
+                        )
+                      : "Tolls on route"}
+                  </strong>
+                </div>
+
+                {quote.tolls.estimated_round_trip_amount !== null && (
+                  <small>
+                    Route estimate · actual toll evidence required
+                  </small>
+                )}
+              </div>
+            )}
           </section>
 
           <p className="mileage-helper">

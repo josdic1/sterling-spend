@@ -5,6 +5,8 @@ import eventsRouter from "./routes/events.js";
 import mileageRouter from "./routes/mileage.js";
 import receiptAnalysisRouter from "./routes/receipt-analysis.js";
 import reimbursementsRouter from "./routes/reimbursements.js";
+import usersRouter from "./routes/users.js";
+import authRouter from "./routes/auth.js";
 import {
   attachmentsRouter,
   expenseAttachmentsRouter,
@@ -28,6 +30,8 @@ app.use("/api/attachments", attachmentsRouter);
 app.use("/api/events", eventsRouter);
 app.use("/api/mileage", mileageRouter);
 app.use("/api/receipt-analysis", receiptAnalysisRouter);
+app.use("/api/users", usersRouter);
+app.use("/api/auth", authRouter);
 
 app.get("/health", async (_req, res) => {
   const result = await db.query("SELECT NOW() AS now");

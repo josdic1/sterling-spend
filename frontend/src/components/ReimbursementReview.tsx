@@ -1,5 +1,6 @@
 import { useState } from "react";
 import {
+  AlertTriangle,
   Car,
   CheckCircle2,
   ReceiptText,
@@ -8,12 +9,12 @@ import {
 import { format } from "date-fns";
 import {
   submitReimbursement,
-  TEST_EMPLOYEE_ID,
   type CurrentReimbursement,
 } from "../lib/api";
 import "./ReimbursementReview.css";
 
 type ReimbursementReviewProps = {
+  userId: string;
   reimbursement: CurrentReimbursement;
   onCancel: () => void;
   onSubmitted: () => void;
@@ -33,7 +34,22 @@ function formatMonth(year: number, month: number) {
   );
 }
 
+function issueTitle(
+  issue: CurrentReimbursement["analysis"]["known_issues"][number],
+) {
+  if (issue.type === "toll_mismatch") {
+    return issue.evidence_amount === 0
+      ? `Toll evidence missing · ${issue.event_name}`
+      : `Toll mismatch · ${issue.event_name}`;
+  }
+
+  return `Possible duplicate · ${issue.vendor}${
+    issue.event_name ? ` · ${issue.event_name}` : ""
+  }`;
+}
+
 export default function ReimbursementReview({
+  userId,
   reimbursement,
   onCancel,
   onSubmitted,
@@ -42,8 +58,11 @@ export default function ReimbursementReview({
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState("");
 
-  const canSubmit = reimbursement.status === "open";
+  const canSubmit =
+    reimbursement.status === "open" &&
+    reimbursement.analysis.blocker_count === 0;
   const isPaid = reimbursement.status === "paid";
+  const issueTitles = reimbursement.analysis.known_issues.map(issueTitle);
 
   async function handleSubmit() {
     try {
@@ -52,7 +71,8 @@ export default function ReimbursementReview({
 
       await submitReimbursement(
         reimbursement.id,
-        TEST_EMPLOYEE_ID,
+        userId,
+        reimbursement.analysis.issue_count > 0,
       );
 
       onSubmitted();
@@ -165,7 +185,7 @@ export default function ReimbursementReview({
             <strong>
               {reimbursement.mileage.length}
             </strong>
-            Mileage entries
+            Mileage
           </span>
         </div>
       </section>
@@ -239,6 +259,98 @@ export default function ReimbursementReview({
         )}
       </section>
 
+      {reimbursement.analysis.blocker_count > 0 && (
+        <section className="reimbursement-review-blockers">
+          <div className="reimbursement-review-analysis-heading">
+            <AlertTriangle size={20} />
+
+            <div>
+              <strong>Cannot submit yet</strong>
+              <span>
+                Finish the work and fix required items first.
+              </span>
+            </div>
+          </div>
+
+          {reimbursement.analysis.submission_blockers.map(
+            (blocker, index) => (
+              <div
+                className="reimbursement-review-issue"
+                key={`${blocker.type}-${index}`}
+              >
+                {blocker.type === "active_event" ? (
+                  <>
+                    <strong>{blocker.event_name} is still active</strong>
+                    <span>
+                      End the Event before submitting so all receipts, mileage, and tolls can be included.
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <strong>
+                      {blocker.vendor || "Receipt"} is not attached to an Event
+                    </strong>
+                    <span>
+                      {formatMoney(blocker.claimed_amount)} · Choose the correct Event before submitting.
+                    </span>
+                  </>
+                )}
+              </div>
+            ),
+          )}
+        </section>
+      )}
+
+      <section className={`reimbursement-review-analysis ${reimbursement.analysis.issue_count > 0 ? "has-issues" : "clean"}`}>
+        <div className="reimbursement-review-analysis-heading">
+          {reimbursement.analysis.issue_count > 0 ? (
+            <AlertTriangle size={20} />
+          ) : (
+            <CheckCircle2 size={20} />
+          )}
+
+          <div>
+            {issueTitles.length > 0 ? (
+              <div className="reimbursement-review-issue-summary">
+                {issueTitles.map((title) => (
+                  <strong key={title}>{title}</strong>
+                ))}
+              </div>
+            ) : (
+              <strong>No known issues</strong>
+            )}
+          </div>
+        </div>
+
+        {reimbursement.analysis.known_issues.map((issue, index) => (
+          <div
+            className="reimbursement-review-issue"
+            key={`${issue.type}-${index}`}
+          >
+            {issue.type === "toll_mismatch" ? (
+              <>
+                <strong>
+                  {issue.evidence_amount === 0
+                    ? `Toll evidence missing · ${issue.event_name}`
+                    : `Toll mismatch · ${issue.event_name}`}
+                </strong>
+                <span>
+                  Planned {formatMoney(issue.planned_amount)} · Evidence {formatMoney(issue.evidence_amount)} · Difference {issue.difference >= 0 ? "+" : ""}{formatMoney(issue.difference)}
+                </span>
+              </>
+            ) : (
+              <>
+                <strong>Possible duplicate · {issue.vendor}</strong>
+                <span>
+                  {issue.count} matching receipts at {formatMoney(issue.claimed_amount)}
+                  {issue.event_name ? ` · ${issue.event_name}` : ""}
+                </span>
+              </>
+            )}
+          </div>
+        ))}
+      </section>
+
       {error && (
         <p className="reimbursement-review-error">
           {error}
@@ -251,11 +363,16 @@ export default function ReimbursementReview({
             <CheckCircle2 size={25} />
 
             <div>
-              <strong>Ready to submit?</strong>
+              <strong>
+                {reimbursement.analysis.issue_count > 0
+                  ? `Submit with ${reimbursement.analysis.issue_count === 1 ? "this issue" : "these issues"}?`
+                  : "Ready to submit?"}
+              </strong>
 
               <span>
-                After submitting, you can no longer add
-                receipts, mileage, or tolls to this month.
+                {reimbursement.analysis.issue_count > 0
+                  ? `${issueTitles.join("; ")}. You can submit anyway, and Jill will see the same ${reimbursement.analysis.issue_count === 1 ? "issue" : "issues"}.`
+                  : "This sends the completed expense record to Jill for review."}
               </span>
             </div>
 
@@ -279,7 +396,9 @@ export default function ReimbursementReview({
               >
                 {submitting
                   ? "Submitting…"
-                  : "Submit"}
+                  : reimbursement.analysis.issue_count > 0
+                    ? "Submit anyway"
+                    : "Submit"}
               </button>
             </div>
           </section>
@@ -292,6 +411,11 @@ export default function ReimbursementReview({
             Submit reimbursement
           </button>
         )
+      ) : reimbursement.status === "open" ? (
+        <div className="reimbursement-submit-blocked">
+          <AlertTriangle size={19} />
+          <strong>Finish required items before submitting.</strong>
+        </div>
       ) : (
         renderFinalStatus()
       )}

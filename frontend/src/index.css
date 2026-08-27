@@ -162,6 +162,20 @@ button:disabled {
   font-weight: 700;
 }
 
+.employee-signout {
+  min-height: 36px;
+  padding: 0 2px;
+  border: 0;
+  background: transparent;
+  color: var(--color-subtle);
+  font-size: var(--text-sm);
+  font-weight: 700;
+}
+
+.employee-signout:hover {
+  color: var(--color-ink);
+}
+
 /* ACTIVE EVENT */
 
 .active-event {
@@ -614,4 +628,17 @@ button:disabled {
   align-items: center;
   gap: 8px;
   color: var(--color-subtle);
+}
+
+.employee-warning {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--border, #d9d9d9);
+  border-radius: 12px;
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+
+.secondary-actions.single-action {
+  grid-template-columns: 1fr;
 }

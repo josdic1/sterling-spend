@@ -1,0 +1,13 @@
+STERLING SPEND — ISSUE CLARITY PASS — 2026-08-27
+
+Confirmed product rule implemented:
+- Never show a generic issue count/status without the actual issue.
+- Receipt confirmation names each issue directly.
+- The exact affected receipt field shares the warning treatment.
+- Date mismatch reads e.g. "Check date — receipt says Aug 22, 2026".
+- Missing OCR fields read directly: Amount not found, Vendor not found, Date not found, Category not determined.
+- Employee review, Jill Today detail, Jill review detail, and Jill queue surface actual issue names.
+- Toll confirmation no longer invents Vendor="Toll" and does not redundantly show Category=Tolls.
+
+No database migration.
+Does not touch receipt-analysis.ts, GOOGLE_PLACES_API_KEY, or the working Maps/Places key setup.

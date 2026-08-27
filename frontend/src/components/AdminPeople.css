@@ -1,0 +1,239 @@
+.admin-people {
+  display: grid;
+  gap: 24px;
+}
+
+.admin-people-add {
+  display: grid;
+  gap: 18px;
+  padding: 20px;
+  border-radius: var(--radius-lg);
+  background: var(--color-card);
+  box-shadow: var(--shadow-card);
+}
+
+.admin-people-add-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.admin-people-add-icon {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: var(--color-blue-soft);
+  color: var(--color-primary-strong);
+}
+
+.admin-people-add h2,
+.admin-people-list-heading h2 {
+  margin: 0;
+  font-size: 18px;
+  letter-spacing: -0.02em;
+}
+
+.admin-people-add p,
+.admin-people-list-heading p {
+  margin: 3px 0 0;
+  color: var(--color-subtle);
+  font-size: 12px;
+}
+
+.admin-people-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  align-items: end;
+}
+
+.admin-people-fields label {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.admin-people-fields label > span {
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.admin-people-fields input {
+  width: 100%;
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 0 13px;
+  border: 1px solid var(--color-line);
+  border-radius: 11px;
+  background: var(--color-page);
+  color: var(--color-ink);
+  font: inherit;
+  font-size: 14px;
+}
+
+.admin-people-fields input:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+}
+
+.admin-people-fields button,
+.admin-person-row > button {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 11px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.admin-people-fields button {
+  grid-column: 1 / -1;
+  justify-self: start;
+  min-width: 150px;
+  background: var(--color-primary);
+  color: white;
+}
+
+.admin-people-fields button:disabled,
+.admin-person-row > button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.admin-people-list-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.admin-people-list-heading > span {
+  color: var(--color-subtle);
+  font-size: 12px;
+}
+
+.admin-people-list {
+  display: grid;
+  gap: 10px;
+}
+
+.admin-person-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 15px 16px;
+  border: 1px solid var(--color-line);
+  border-radius: 14px;
+  background: var(--color-card);
+}
+
+.admin-person-main {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.admin-person-main > div:first-child {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.admin-person-main strong {
+  font-size: 14px;
+}
+
+.admin-person-main > div:first-child span {
+  overflow: hidden;
+  color: var(--color-subtle);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-person-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.admin-person-status,
+.admin-person-role {
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.admin-person-status.active {
+  background: #dff5e6;
+  color: #168341;
+}
+
+.admin-person-status.inactive {
+  background: #eceff3;
+  color: #747d8c;
+}
+
+.admin-person-role {
+  background: var(--color-blue-soft);
+  color: var(--color-primary-strong);
+}
+
+.admin-person-deactivate {
+  background: #fff1ef;
+  color: #a23a2b;
+}
+
+.admin-person-reactivate {
+  background: #e8f7ed;
+  color: #168341;
+}
+
+.admin-people-error,
+.admin-people-message {
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--color-card);
+  color: var(--color-subtle);
+  font-size: 13px;
+}
+
+.admin-people-error {
+  background: #fff1ef;
+  color: #a23a2b;
+  font-weight: 700;
+}
+
+@media (max-width: 759px) {
+  .admin-people-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-people-fields button {
+    width: 100%;
+    justify-self: stretch;
+  }
+
+  .admin-people-list-heading,
+  .admin-person-row,
+  .admin-person-main {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .admin-person-row > button {
+    width: 100%;
+  }
+}

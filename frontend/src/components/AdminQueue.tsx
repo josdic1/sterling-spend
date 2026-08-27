@@ -8,21 +8,32 @@ import {
   X,
 } from "lucide-react";
 import { format } from "date-fns";
+import AdminPeople from "./AdminPeople";
+import AdminEvents from "./AdminEvents";
+import AdminTodayDetail from "./AdminTodayDetail";
 import {
+  getAdminActivationStatus,
   getAdminPaidReimbursements,
   getAdminReimbursementQueue,
-  TEST_ADMIN_ID,
+  type AdminActivationStatus,
   type AdminReimbursementQueueItem,
 } from "../lib/api";
 import "./AdminQueue.css";
 
 type AdminQueueProps = {
+  adminUserId: string;
   onClose: () => void;
   onOpenReimbursement: (reimbursementId: string) => void;
 };
 
 type AdminViewMode = "mobile" | "web";
-type AdminQueueSection = "review" | "paid";
+type AdminQueueSection =
+  | "today"
+  | "events"
+  | "people"
+  | "review"
+  | "reviewed"
+  | "paid";
 
 function formatMoney(value: string | number) {
   return new Intl.NumberFormat("en-US", {
@@ -47,6 +58,7 @@ function formatPaidDate(value: string | null) {
 }
 
 export default function AdminQueue({
+  adminUserId,
   onClose,
   onOpenReimbursement,
 }: AdminQueueProps) {
@@ -58,8 +70,13 @@ export default function AdminQueue({
     AdminReimbursementQueueItem[]
   >([]);
 
+  const [activationItems, setActivationItems] = useState<
+    AdminActivationStatus[]
+  >([]);
+
   const [section, setSection] =
-    useState<AdminQueueSection>("review");
+    useState<AdminQueueSection>("today");
+  const [selectedTodayUserId, setSelectedTodayUserId] = useState<string | null>(null);
 
   const [viewMode, setViewMode] =
     useState<AdminViewMode>(() =>
@@ -77,23 +94,25 @@ export default function AdminQueue({
         setLoading(true);
         setError("");
 
-        const [queueResult, paidResult] =
+        const [activationResult, queueResult, paidResult] =
           await Promise.all([
+            getAdminActivationStatus(adminUserId),
             getAdminReimbursementQueue(
-              TEST_ADMIN_ID,
+              adminUserId,
             ),
             getAdminPaidReimbursements(
-              TEST_ADMIN_ID,
+              adminUserId,
             ),
           ]);
 
+        setActivationItems(activationResult);
         setReviewItems(queueResult);
         setPaidItems(paidResult);
       } catch (caughtError) {
         setError(
           caughtError instanceof Error
             ? caughtError.message
-            : "Could not load reimbursements.",
+            : "Could not load Controller.",
         );
       } finally {
         setLoading(false);
@@ -101,12 +120,53 @@ export default function AdminQueue({
     }
 
     void loadReimbursements();
-  }, []);
+  }, [adminUserId]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      void getAdminActivationStatus(adminUserId)
+        .then(setActivationItems)
+        .catch(() => undefined);
+    }, 10_000);
+
+    return () => window.clearInterval(timer);
+  }, [adminUserId]);
+
+  const needsReviewItems = reviewItems.filter(
+    (item) => item.status === "submitted",
+  );
+
+  const reviewedItems = reviewItems.filter(
+    (item) => item.status === "reviewed",
+  );
 
   const items =
     section === "review"
-      ? reviewItems
-      : paidItems;
+      ? needsReviewItems
+      : section === "reviewed"
+        ? reviewedItems
+        : paidItems;
+
+  const todayKey = new Date().toLocaleDateString("en-CA");
+
+  const todayAssignmentItems = activationItems.filter((item) =>
+    item.assigned_events.some(
+      (event) => String(event.event_date).slice(0, 10) === todayKey,
+    ),
+  );
+
+  const sectionTitle =
+    section === "today"
+      ? "Today"
+      : section === "events"
+        ? "Events"
+        : section === "people"
+          ? "People"
+          : section === "review"
+            ? "Needs review"
+            : section === "reviewed"
+              ? "Reviewed"
+              : "Paid";
 
   return (
     <main
@@ -115,7 +175,7 @@ export default function AdminQueue({
       <header className="admin-queue-header">
         <div>
           <span>CONTROLLER</span>
-          <h1>Reimbursements</h1>
+          <h1>{sectionTitle}</h1>
         </div>
 
         <button
@@ -130,17 +190,56 @@ export default function AdminQueue({
 
       <nav
         className="admin-queue-sections"
-        aria-label="Reimbursement status"
+        aria-label="Controller sections"
       >
+        <button
+          type="button"
+          className={section === "today" ? "active" : ""}
+          onClick={() => {
+            setSection("today");
+            setSelectedTodayUserId(null);
+          }}
+        >
+          Today
+          <span>{todayAssignmentItems.length}</span>
+        </button>
+
+        <button
+          type="button"
+          className={section === "events" ? "active" : ""}
+          onClick={() => { setSection("events"); setSelectedTodayUserId(null); }}
+        >
+          Events
+        </button>
+
+        <button
+          type="button"
+          className={section === "people" ? "active" : ""}
+          onClick={() => { setSection("people"); setSelectedTodayUserId(null); }}
+        >
+          People
+        </button>
+
         <button
           type="button"
           className={
             section === "review" ? "active" : ""
           }
-          onClick={() => setSection("review")}
+          onClick={() => { setSection("review"); setSelectedTodayUserId(null); }}
         >
           Needs review
-          <span>{reviewItems.length}</span>
+          <span>{needsReviewItems.length}</span>
+        </button>
+
+        <button
+          type="button"
+          className={
+            section === "reviewed" ? "active" : ""
+          }
+          onClick={() => { setSection("reviewed"); setSelectedTodayUserId(null); }}
+        >
+          Reviewed
+          <span>{reviewedItems.length}</span>
         </button>
 
         <button
@@ -148,7 +247,7 @@ export default function AdminQueue({
           className={
             section === "paid" ? "active" : ""
           }
-          onClick={() => setSection("paid")}
+          onClick={() => { setSection("paid"); setSelectedTodayUserId(null); }}
         >
           Paid
           <span>{paidItems.length}</span>
@@ -179,9 +278,78 @@ export default function AdminQueue({
         </button>
       </div>
 
-      {loading ? (
+      {section === "today" && selectedTodayUserId ? (
+        <AdminTodayDetail
+          adminUserId={adminUserId}
+          userId={selectedTodayUserId}
+          onBack={() => setSelectedTodayUserId(null)}
+        />
+      ) : section === "today" && !loading && !error ? (
+        <section className="admin-live-list">
+          {todayAssignmentItems.length === 0 && (
+            <div className="admin-queue-message">
+              <strong>No one assigned today</strong>
+              <span>Assign employees from Events to put them on Today.</span>
+            </div>
+          )}
+
+          {todayAssignmentItems.map((item) => {
+            const todayAssignments = item.assigned_events.filter(
+              (event) => String(event.event_date).slice(0, 10) === todayKey,
+            );
+            const assignmentNames = todayAssignments.map((event) => event.name);
+            const assignmentLabel = assignmentNames.length === 1
+              ? assignmentNames[0]
+              : `${assignmentNames.length} Events`;
+            const todayState = item.is_activated ? "active" : "ready";
+
+            return (
+              <button
+                type="button"
+                className={`admin-live-row ${todayState}`}
+                key={item.user_id}
+                onClick={() => setSelectedTodayUserId(item.user_id)}
+              >
+                <div className="admin-live-person">
+                  <strong>{item.employee_name}</strong>
+                  <span>{item.employee_email}</span>
+                </div>
+
+                <div className="admin-live-status-grid">
+                  <div className="admin-live-status-line">
+                    <span className="admin-live-status-label">Assigned</span>
+                    <strong>{assignmentLabel}</strong>
+                  </div>
+
+                  <div className="admin-live-status-line">
+                    <span className="admin-live-status-label">Status</span>
+                    <span className="admin-live-state">
+                      <span
+                        className={
+                          item.is_activated
+                            ? "admin-live-dot active"
+                            : "admin-live-dot"
+                        }
+                      />
+                      <strong>
+                        {item.is_activated ? "ACTIVE" : "READY"}
+                      </strong>
+                    </span>
+                  </div>
+                </div>
+
+                <ChevronRight size={19} className="admin-live-chevron" />
+              </button>
+            );
+          })}
+        </section>
+      ) : section === "events" ? (
+        <AdminEvents adminUserId={adminUserId} />
+      ) : section === "people" ? (
+        <AdminPeople adminUserId={adminUserId} />
+      ) : loading ? (
         <div className="admin-queue-message">
-          Loading reimbursements…
+          Loading…
         </div>
       ) : error ? (
         <div className="admin-queue-message admin-queue-error">
@@ -197,12 +365,20 @@ export default function AdminQueue({
                 Submitted reimbursements will appear here.
               </span>
             </>
+          ) : section === "reviewed" ? (
+            <>
+              <CheckCircle2 size={28} />
+              <strong>No reviewed reimbursements</strong>
+              <span>
+                Reviewed reimbursements waiting for payment will appear here.
+              </span>
+            </>
           ) : (
             <>
               <CheckCircle2 size={28} />
               <strong>No paid reimbursements yet</strong>
               <span>
-                Completed reimbursements will appear here.
+                Paid reimbursements will appear here.
               </span>
             </>
           )}
@@ -271,6 +447,12 @@ export default function AdminQueue({
                     : item.employee_email}
                 </span>
 
+                {section === "review" && (item.issue_summaries?.length ?? 0) > 0 && (
+                  <span className="admin-queue-issue-summary">
+                    {item.issue_summaries?.join(" · ")}
+                  </span>
+                )}
+
                 <ChevronRight size={19} />
               </div>
             </button>
@@ -284,6 +466,7 @@ export default function AdminQueue({
                 <th>Employee</th>
                 <th>Month</th>
                 <th>Status</th>
+                {section === "review" && <th>Issues</th>}
                 <th>Expenses</th>
                 <th>Mileage</th>
                 <th>Claimed</th>
@@ -314,6 +497,14 @@ export default function AdminQueue({
                       {item.status}
                     </span>
                   </td>
+
+                  {section === "review" && (
+                    <td>
+                      {(item.issue_summaries?.length ?? 0) > 0
+                        ? item.issue_summaries?.join(" · ")
+                        : "—"}
+                    </td>
+                  )}
 
                   <td>{item.expense_count}</td>
                   <td>{item.mileage_count}</td>
