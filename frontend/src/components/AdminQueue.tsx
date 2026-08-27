@@ -11,6 +11,7 @@ import { format } from "date-fns";
 import AdminPeople from "./AdminPeople";
 import AdminEvents from "./AdminEvents";
 import AdminTodayDetail from "./AdminTodayDetail";
+import ThemeToggle from "./ThemeToggle";
 import {
   getAdminActivationStatus,
   getAdminPaidReimbursements,
@@ -178,14 +179,17 @@ export default function AdminQueue({
           <h1>{sectionTitle}</h1>
         </div>
 
-        <button
-          type="button"
-          className="admin-queue-close"
-          onClick={onClose}
-          aria-label="Close admin"
-        >
-          <X size={21} />
-        </button>
+        <div className="admin-queue-header-actions">
+          <ThemeToggle />
+          <button
+            type="button"
+            className="admin-queue-close"
+            onClick={onClose}
+            aria-label="Close admin"
+          >
+            <X size={21} />
+          </button>
+        </div>
       </header>
 
       <nav

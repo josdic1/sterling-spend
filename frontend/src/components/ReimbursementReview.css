@@ -287,14 +287,14 @@
 .reimbursement-review-paid .reimbursement-review-counts > div,
 .reimbursement-review-paid .reimbursement-review-row,
 .reimbursement-review-paid .reimbursement-review-empty {
-  background: #fbfcfd;
+  background: var(--color-page);
   box-shadow: none;
 }
 
 .reimbursement-review-paid
   .reimbursement-review-row
   + .reimbursement-review-row {
-  border-top-color: #edf0f4;
+  border-top-color: var(--color-line);
 }
 
 .reimbursement-review-paid .reimbursement-review-counts svg {
@@ -318,9 +318,9 @@
 .reimbursement-review-analysis {
   margin-top: 24px;
   padding: 18px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-line);
   border-radius: 18px;
-  background: #fff;
+  background: var(--color-card);
 }
 
 .reimbursement-review-analysis-heading {
@@ -344,7 +344,7 @@
 .reimbursement-review-issue {
   margin-top: 14px;
   padding-top: 14px;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--color-line);
 }
 
 .reimbursement-review-blockers {
@@ -383,4 +383,138 @@
 .reimbursement-review-issue-summary {
   display: grid;
   gap: 3px;
+}
+
+/* Receipt correction / post-submit flagging */
+.receipt-review-row {
+  display: grid;
+  gap: 10px;
+}
+
+.receipt-review-summary {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.receipt-review-summary > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.receipt-review-summary span {
+  color: var(--color-subtle);
+  font-size: var(--text-xs);
+}
+
+.receipt-review-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.receipt-review-actions button,
+.receipt-correction-buttons button {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 10px;
+  border: 1px solid var(--color-line);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--color-subtle);
+  font-size: 11.5px;
+  font-weight: 800;
+}
+
+.receipt-review-actions button:hover,
+.receipt-correction-buttons button:hover {
+  color: var(--color-ink);
+  border-color: color-mix(in srgb, var(--color-primary) 35%, var(--color-line));
+}
+
+.receipt-flagged {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--color-orange);
+  font-size: 11.5px;
+  font-weight: 800;
+}
+
+.receipt-correction-form,
+.receipt-flag-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--color-line);
+  border-radius: 12px;
+  background: var(--color-page);
+}
+
+.receipt-correction-form label,
+.receipt-flag-form label {
+  display: grid;
+  gap: 5px;
+}
+
+.receipt-correction-form label > span,
+.receipt-flag-form label > span {
+  color: var(--color-subtle);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.receipt-correction-form input,
+.receipt-correction-form select,
+.receipt-flag-form textarea {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid var(--color-line);
+  border-radius: 9px;
+  background: var(--color-card);
+  color: var(--color-ink);
+  padding: 8px 10px;
+}
+
+.receipt-flag-form textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+.receipt-correction-reason,
+.receipt-flag-form label,
+.receipt-correction-buttons {
+  grid-column: 1 / -1;
+}
+
+.receipt-correction-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.receipt-correction-buttons .save {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.receipt-correction-buttons .flag {
+  border-color: color-mix(in srgb, var(--color-orange) 55%, var(--color-line));
+  color: var(--color-orange);
+}
+
+@media (max-width: 520px) {
+  .receipt-correction-form,
+  .receipt-flag-form {
+    grid-template-columns: 1fr;
+  }
 }

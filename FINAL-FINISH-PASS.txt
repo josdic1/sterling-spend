@@ -1,0 +1,15 @@
+STERLING SPEND — FINAL FINISH PASS
+
+Included:
+- clean compact Demo Mode quick-login pills (no truncation)
+- receipt date logic finalized:
+  * active Event date defaults only when OCR cannot read a date
+  * historical Event selection defaults to Event date only when OCR cannot read a date
+  * real OCR date is never overwritten
+  * receipt/Event date mismatch remains explicit and amber
+- prior final-rollup changes preserved
+- prior demo-mode simplification preserved
+- clearer demo issue preserved
+- Event dashboard intentionally untouched/frozen
+- no CSV/report export added
+- no migration

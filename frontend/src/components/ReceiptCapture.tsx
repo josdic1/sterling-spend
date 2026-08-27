@@ -120,7 +120,11 @@ export default function ReceiptCapture({
             : "",
         );
 
-        setExpenseDate(result.expense_date ?? "");
+        setExpenseDate(
+          result.expense_date ??
+            result.active_event?.event_date?.slice(0, 10) ??
+            "",
+        );
 
         if (isToll) {
           const tollCategory =
@@ -599,9 +603,22 @@ export default function ReceiptCapture({
                   <select
                     className="receipt-confirm-input"
                     value={eventId}
-                    onChange={(event) =>
-                      setEventId(event.target.value)
-                    }
+                    onChange={(event) => {
+                      const nextEventId = event.target.value;
+                      setEventId(nextEventId);
+
+                      // If OCR could not read a receipt date, the selected
+                      // Event date is the clean default. Never overwrite an
+                      // actual receipt date: a mismatch must stay visible.
+                      if (expenseDate === "") {
+                        const nextEvent = assignedEvents.find(
+                          (assignedEvent) => assignedEvent.id === nextEventId,
+                        );
+                        if (nextEvent?.event_date) {
+                          setExpenseDate(nextEvent.event_date.slice(0, 10));
+                        }
+                      }
+                    }}
                   >
                     <option value="">
                       Choose event

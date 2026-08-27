@@ -17,6 +17,7 @@ import {
   MapPin,
   ReceiptText,
   Route as RouteIcon,
+  Search,
 } from "lucide-react";
 import { format } from "date-fns";
 import ActiveEventDetail from "./components/ActiveEventDetail";
@@ -26,6 +27,7 @@ import EventSelector from "./components/EventSelector";
 import ReceiptCapture from "./components/ReceiptCapture";
 import ReimbursementReview from "./components/ReimbursementReview";
 import LoginScreen from "./components/LoginScreen";
+import ThemeToggle from "./components/ThemeToggle";
 import { useAuth } from "./auth";
 import {
   ensureAutomaticTravel,
@@ -75,6 +77,7 @@ function EmployeeHome({ userId, isAdmin, onLogout }: EmployeeHomeProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [travelWarning, setTravelWarning] = useState("");
+  const [recentSearch, setRecentSearch] = useState("");
 
   const loadHome = useCallback(async () => {
     try {
@@ -221,6 +224,9 @@ function EmployeeHome({ userId, isAdmin, onLogout }: EmployeeHomeProps) {
           onSubmitted={() => {
             void handleReimbursementSubmitted();
           }}
+          onChanged={() => {
+            void loadHome();
+          }}
         />
       </div>
     );
@@ -258,6 +264,39 @@ function EmployeeHome({ userId, isAdmin, onLogout }: EmployeeHomeProps) {
       !activeTravelAlreadyListed,
   );
 
+  const recentQuery = recentSearch.trim().toLowerCase();
+  const recentExpenses = (reimbursement?.expenses ?? []).filter((expense) => {
+    if (!recentQuery) return true;
+    return [
+      expense.vendor,
+      expense.category_name,
+      expense.event_name,
+      expense.claimed_amount,
+      expense.expense_date,
+    ].some((value) => String(value ?? "").toLowerCase().includes(recentQuery));
+  });
+  const recentMileage = (reimbursement?.mileage ?? []).filter((entry) => {
+    if (!recentQuery) return true;
+    return [
+      "mileage",
+      entry.event_name,
+      entry.claimed_miles,
+      entry.trip_date,
+    ].some((value) => String(value ?? "").toLowerCase().includes(recentQuery));
+  });
+  const activeTravelMatches = showActiveTravel && (!recentQuery || [
+    "mileage",
+    activeEvent?.name,
+    activeEvent?.planned_miles,
+  ].some((value) => String(value ?? "").toLowerCase().includes(recentQuery)));
+  const hasAnyRecentActivity = Boolean(
+    showActiveTravel ||
+    (reimbursement && (reimbursement.expenses.length > 0 || reimbursement.mileage.length > 0)),
+  );
+  const hasMatchingRecentActivity = Boolean(
+    activeTravelMatches || recentExpenses.length > 0 || recentMileage.length > 0,
+  );
+
   return (
     <div className="employee-app">
       <header className="employee-topbar">
@@ -267,6 +306,7 @@ function EmployeeHome({ userId, isAdmin, onLogout }: EmployeeHomeProps) {
         </div>
 
         <div className="employee-topbar-actions">
+          <ThemeToggle />
           {isAdmin && (
             <button
               type="button"
@@ -409,22 +449,35 @@ function EmployeeHome({ userId, isAdmin, onLogout }: EmployeeHomeProps) {
         )}
 
         <section className="recent-section">
-          <div className="section-heading">
+          <div className="section-heading recent-heading">
             <span>RECENT</span>
+            {hasAnyRecentActivity && (
+              <label className="recent-search">
+                <Search size={13} />
+                <input
+                  value={recentSearch}
+                  onChange={(event) => setRecentSearch(event.target.value)}
+                  placeholder="Search"
+                  aria-label="Search recent expenses"
+                />
+              </label>
+            )}
           </div>
 
-          {(!reimbursement ||
-            (reimbursement.expenses.length === 0 &&
-              reimbursement.mileage.length === 0)) &&
-          !showActiveTravel ? (
+          {!hasAnyRecentActivity ? (
             <div className="recent-empty">
               <ReceiptText size={24} />
               <strong>No activity yet</strong>
               <span>Your expenses will appear here.</span>
             </div>
+          ) : !hasMatchingRecentActivity ? (
+            <div className="recent-empty recent-empty-search">
+              <Search size={20} />
+              <strong>No matches</strong>
+            </div>
           ) : (
             <div className="activity-list">
-              {showActiveTravel && activeEvent && (
+              {activeTravelMatches && activeEvent && (
                 <article className="activity-row">
                   <div className="activity-icon">
                     <Car size={19} />
@@ -448,7 +501,7 @@ function EmployeeHome({ userId, isAdmin, onLogout }: EmployeeHomeProps) {
                 </article>
               )}
 
-              {reimbursement?.expenses.map((expense) => (
+              {recentExpenses.map((expense) => (
                 <article
                   className="activity-row"
                   key={expense.id}
@@ -478,7 +531,7 @@ function EmployeeHome({ userId, isAdmin, onLogout }: EmployeeHomeProps) {
                 </article>
               ))}
 
-              {reimbursement?.mileage.map((entry) => {
+              {recentMileage.map((entry) => {
                 const amount =
                   Number(entry.claimed_miles) *
                   Number(entry.rate_per_mile);

@@ -20,6 +20,20 @@ const adjustExpenseSchema = z.object({
   reason: z.string().trim().min(1).max(500),
 });
 
+const correctExpenseSchema = z.object({
+  user_id: z.string().uuid(),
+  vendor: z.string().trim().max(300).nullable(),
+  expense_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  category_id: z.string().uuid(),
+  claimed_amount: z.number().nonnegative(),
+  reason: z.string().trim().min(1).max(500),
+});
+
+const flagExpenseSchema = z.object({
+  user_id: z.string().uuid(),
+  reason: z.string().trim().min(1).max(500),
+});
+
 router.get("/current/:userId", async (req, res) => {
   const { userId } = req.params;
 
@@ -237,6 +251,202 @@ router.post("/", async (req, res) => {
   } finally {
     client.release();
   }
+});
+
+router.patch("/:expenseId", async (req, res) => {
+  const { expenseId } = req.params;
+  const parsed = correctExpenseSchema.safeParse(req.body);
+
+  if (!parsed.success) {
+    return res.status(400).json({
+      error: "Correction details and a reason are required",
+      details: parsed.error.flatten(),
+    });
+  }
+
+  const {
+    user_id,
+    vendor,
+    expense_date,
+    category_id,
+    claimed_amount,
+    reason,
+  } = parsed.data;
+
+  const client = await db.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const existingResult = await client.query(
+      `
+        SELECT
+          e.id,
+          e.vendor,
+          e.expense_date,
+          e.category_id,
+          e.claimed_amount,
+          e.approved_amount,
+          r.user_id,
+          r.status
+        FROM expenses e
+        JOIN reimbursements r ON r.id = e.reimbursement_id
+        JOIN users u ON u.id = r.user_id
+        WHERE e.id = $1
+          AND u.id = $2
+          AND u.is_active = TRUE
+        FOR UPDATE OF e
+      `,
+      [expenseId, user_id],
+    );
+
+    if (existingResult.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Expense not found" });
+    }
+
+    const existing = existingResult.rows[0];
+
+    if (existing.status !== "open") {
+      await client.query("ROLLBACK");
+      return res.status(409).json({
+        error: "Submitted receipts cannot be rewritten. Flag the receipt instead.",
+      });
+    }
+
+    const updatedResult = await client.query(
+      `
+        UPDATE expenses
+        SET
+          vendor = $1,
+          expense_date = $2,
+          category_id = $3,
+          approved_amount = CASE
+            WHEN approved_amount = claimed_amount THEN $4
+            ELSE approved_amount
+          END,
+          claimed_amount = $4,
+          updated_at = NOW()
+        WHERE id = $5
+        RETURNING *
+      `,
+      [vendor?.trim() || null, expense_date, category_id, claimed_amount, expenseId],
+    );
+
+    const changes: Array<[string, string | null, string | null]> = [];
+    const normalizedVendor = vendor?.trim() || null;
+    if ((existing.vendor ?? null) !== normalizedVendor) {
+      changes.push(["vendor", existing.vendor, normalizedVendor]);
+    }
+    if (String(existing.expense_date).slice(0, 10) !== expense_date) {
+      changes.push(["expense_date", String(existing.expense_date).slice(0, 10), expense_date]);
+    }
+    if (existing.category_id !== category_id) {
+      changes.push(["category_id", existing.category_id, category_id]);
+    }
+    if (Number(existing.claimed_amount) !== claimed_amount) {
+      changes.push(["claimed_amount", String(existing.claimed_amount), String(claimed_amount)]);
+    }
+
+    for (const [fieldName, oldValue, newValue] of changes) {
+      await client.query(
+        `
+          INSERT INTO audit_log (
+            entity_type,
+            entity_id,
+            action,
+            field_name,
+            old_value,
+            new_value,
+            changed_by_user_id,
+            reason
+          )
+          VALUES ('expense', $1, 'corrected', $2, $3, $4, $5, $6)
+        `,
+        [expenseId, fieldName, oldValue, newValue, user_id, reason],
+      );
+    }
+
+    await client.query("COMMIT");
+    return res.json(updatedResult.rows[0]);
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+});
+
+router.post("/:expenseId/flag", async (req, res) => {
+  const { expenseId } = req.params;
+  const parsed = flagExpenseSchema.safeParse(req.body);
+
+  if (!parsed.success) {
+    return res.status(400).json({
+      error: "A reason is required to flag a receipt",
+    });
+  }
+
+  const { user_id, reason } = parsed.data;
+
+  const result = await db.query(
+    `
+      SELECT
+        e.id,
+        r.id AS reimbursement_id,
+        r.status
+      FROM expenses e
+      JOIN reimbursements r ON r.id = e.reimbursement_id
+      JOIN users u ON u.id = r.user_id
+      WHERE e.id = $1
+        AND r.user_id = $2
+        AND u.is_active = TRUE
+      LIMIT 1
+    `,
+    [expenseId, user_id],
+  );
+
+  if (result.rows.length === 0) {
+    return res.status(404).json({ error: "Expense not found" });
+  }
+
+  if (result.rows[0].status === "open") {
+    return res.status(409).json({
+      error: "This receipt is still editable. Correct it before submission.",
+    });
+  }
+
+  const flagResult = await db.query(
+    `
+      INSERT INTO audit_log (
+        entity_type,
+        entity_id,
+        action,
+        field_name,
+        old_value,
+        new_value,
+        changed_by_user_id,
+        reason
+      )
+      VALUES (
+        'expense',
+        $1,
+        'employee_flagged',
+        'receipt_issue',
+        NULL,
+        $2,
+        $3,
+        $2
+      )
+      RETURNING id, changed_at, reason
+    `,
+    [expenseId, reason, user_id],
+  );
+
+  return res.status(201).json({
+    ...flagResult.rows[0],
+    reimbursement_id: result.rows[0].reimbursement_id,
+  });
 });
 
 router.patch("/:expenseId/approved-amount", async (req, res) => {

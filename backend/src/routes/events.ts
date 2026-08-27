@@ -9,6 +9,11 @@ const adminQuerySchema = z.object({
   requesting_user_id: z.string().uuid(),
 });
 
+const locationSearchSchema = z.object({
+  requesting_user_id: z.string().uuid(),
+  query: z.string().trim().min(3).max(300),
+});
+
 const eventInputSchema = z.object({
   requesting_user_id: z.string().uuid(),
   event_number: z.string().trim().min(1).max(120),
@@ -44,6 +49,65 @@ async function assignmentsAreActive(client: PoolClient, userIds: string[]) {
   );
   return result.rows.length === uniqueIds.length;
 }
+
+router.post("/admin/location-search", async (req, res) => {
+  const parsed = locationSearchSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: "Enter at least 3 characters to search locations" });
+  }
+
+  const { requesting_user_id, query } = parsed.data;
+  if (!(await isActiveAdmin(requesting_user_id))) {
+    return res.status(403).json({ error: "Only an active admin can search event locations" });
+  }
+
+  const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+  if (!apiKey) {
+    return res.status(503).json({ error: "Location search is not configured" });
+  }
+
+  const placesResponse = await fetch(
+    "https://places.googleapis.com/v1/places:searchText",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": apiKey,
+        "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress",
+      },
+      body: JSON.stringify({
+        textQuery: query,
+        maxResultCount: 6,
+        languageCode: "en",
+        regionCode: "US",
+      }),
+    },
+  );
+
+  if (!placesResponse.ok) {
+    const detail = await placesResponse.text();
+    console.error("Google Places event location search failed", placesResponse.status, detail);
+    return res.status(502).json({ error: "Location search is unavailable" });
+  }
+
+  const payload = (await placesResponse.json()) as {
+    places?: Array<{
+      id?: string;
+      displayName?: { text?: string };
+      formattedAddress?: string;
+    }>;
+  };
+
+  const suggestions = (payload.places ?? [])
+    .map((place) => ({
+      id: place.id ?? null,
+      name: place.displayName?.text?.trim() ?? "",
+      address: place.formattedAddress?.trim() ?? "",
+    }))
+    .filter((place) => place.name || place.address);
+
+  return res.json({ suggestions });
+});
 
 router.get("/admin", async (req, res) => {
   const parsed = adminQuerySchema.safeParse(req.query);
@@ -378,6 +442,38 @@ router.get("/admin/:eventId/detail", async (req, res) => {
       ),
     ]);
 
+  const employeeFlagResult = await db.query(
+    `
+      SELECT
+        al.id AS flag_id,
+        al.reason,
+        al.changed_at,
+        ex.id AS expense_id,
+        ex.vendor,
+        ex.claimed_amount,
+        r.user_id AS employee_id,
+        u.name AS employee_name
+      FROM audit_log al
+      JOIN expenses ex
+        ON al.entity_type = 'expense'
+        AND al.entity_id = ex.id
+      JOIN reimbursements r ON r.id = ex.reimbursement_id
+      JOIN users u ON u.id = r.user_id
+      WHERE ex.event_id = $1
+        AND al.action = 'employee_flagged'
+        AND al.field_name = 'receipt_issue'
+        AND NOT EXISTS (
+          SELECT 1
+          FROM audit_log resolved
+          WHERE resolved.action = 'resolved_issue'
+            AND resolved.field_name = 'analysis_issue'
+            AND resolved.old_value = ('employee_flag:' || al.id::text)
+        )
+      ORDER BY al.changed_at
+    `,
+    [eventId],
+  );
+
   const expenses = expenseResult.rows.map((row) => ({
     ...row,
     claimed_amount: Number(row.claimed_amount),
@@ -485,6 +581,16 @@ router.get("/admin/:eventId/detail", async (req, res) => {
     });
   }
 
+  for (const row of employeeFlagResult.rows) {
+    issues.push({
+      type: "employee_flag",
+      expense_id: row.expense_id,
+      employee_id: row.employee_id,
+      employee_name: row.employee_name,
+      message: `Employee flagged receipt — ${row.vendor || "Receipt"} · $${Number(row.claimed_amount).toFixed(2)} · ${row.reason || "Reported mistake"}`,
+    });
+  }
+
   const eventDateKey = String(eventResult.rows[0].event_date).slice(0, 10);
   for (const expense of expenses) {
     const expenseDateKey = String(expense.expense_date).slice(0, 10);
@@ -573,6 +679,13 @@ router.get("/admin/:eventId/detail", async (req, res) => {
       employee_name: entry.employee_name,
       label: "Mileage recorded",
       detail: `${entry.employee_name} · ${entry.approved_miles.toFixed(2)} mi`,
+    })),
+    ...employeeFlagResult.rows.map((flag) => ({
+      type: "receipt_flagged",
+      occurred_at: flag.changed_at,
+      employee_name: flag.employee_name,
+      label: "Receipt flagged",
+      detail: `${flag.employee_name} · ${flag.vendor || "Receipt"} · ${flag.reason || "Reported mistake"}`,
     })),
   ].sort((a, b) => new Date(a.occurred_at).getTime() - new Date(b.occurred_at).getTime());
 

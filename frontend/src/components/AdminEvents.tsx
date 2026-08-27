@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CalendarPlus, ChevronRight, MapPin, Pencil } from "lucide-react";
+import { CalendarPlus, ChevronRight, MapPin, Pencil, Search } from "lucide-react";
 import { format } from "date-fns";
 import {
   createAdminEvent,
   getAdminEvents,
   getAdminUsers,
+  searchAdminEventLocations,
   updateAdminEvent,
   type AdminEvent,
   type AdminEventInput,
+  type AdminLocationSuggestion,
   type AdminUser,
 } from "../lib/api";
 import AdminEventDashboard from "./AdminEventDashboard";
@@ -67,6 +69,11 @@ export default function AdminEvents({ adminUserId }: Props) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [locationQuery, setLocationQuery] = useState("");
+  const [locationSuggestions, setLocationSuggestions] = useState<AdminLocationSuggestion[]>([]);
+  const [locationSearching, setLocationSearching] = useState(false);
+  const [manualLocation, setManualLocation] = useState(false);
+  const formOpen = creating || editingId !== null;
 
   const load = useCallback(async () => {
     try {
@@ -87,14 +94,43 @@ export default function AdminEvents({ adminUserId }: Props) {
 
   useEffect(() => { void load(); }, [load]);
 
+  useEffect(() => {
+    if (!formOpen || manualLocation) return;
+    const query = locationQuery.trim();
+    const selectedLocationLabel = [form.venue_name, form.venue_address]
+      .filter(Boolean)
+      .join(" · ")
+      .trim();
+    if (selectedLocationLabel && query === selectedLocationLabel) {
+      setLocationSuggestions([]);
+      return;
+    }
+    if (query.length < 3) {
+      setLocationSuggestions([]);
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setLocationSearching(true);
+      void searchAdminEventLocations(adminUserId, query)
+        .then(setLocationSuggestions)
+        .catch(() => setLocationSuggestions([]))
+        .finally(() => setLocationSearching(false));
+    }, 280);
+
+    return () => window.clearTimeout(timer);
+  }, [adminUserId, formOpen, form.venue_address, form.venue_name, locationQuery, manualLocation]);
+
   const activeUsers = useMemo(() => users.filter((user) => user.is_active), [users]);
   const names = useMemo(() => new Map(users.map((user) => [user.id, user.name])), [users]);
-  const formOpen = creating || editingId !== null;
 
   function cancel() {
     setCreating(false);
     setEditingId(null);
     setForm(emptyForm);
+    setLocationQuery("");
+    setLocationSuggestions([]);
+    setManualLocation(false);
     setError("");
   }
 
@@ -102,7 +138,20 @@ export default function AdminEvents({ adminUserId }: Props) {
     setCreating(false);
     setEditingId(event.id);
     setForm(toForm(event));
+    setLocationQuery([event.venue_name, event.venue_address].filter(Boolean).join(" · "));
+    setLocationSuggestions([]);
+    setManualLocation(false);
     setError("");
+  }
+
+  function chooseLocation(location: AdminLocationSuggestion) {
+    setForm((current) => ({
+      ...current,
+      venue_name: location.name || current.venue_name,
+      venue_address: location.address || current.venue_address,
+    }));
+    setLocationQuery([location.name, location.address].filter(Boolean).join(" · "));
+    setLocationSuggestions([]);
   }
 
   function toggleUser(userId: string) {
@@ -170,7 +219,7 @@ export default function AdminEvents({ adminUserId }: Props) {
           <span>Create, edit, and assign employees.</span>
         </div>
         {!formOpen && (
-          <button type="button" onClick={() => { setCreating(true); setEditingId(null); setForm(emptyForm); }}>
+          <button type="button" onClick={() => { setCreating(true); setEditingId(null); setForm(emptyForm); setLocationQuery(""); setLocationSuggestions([]); setManualLocation(false); }}>
             <CalendarPlus size={17} /> New event
           </button>
         )}
@@ -191,8 +240,51 @@ export default function AdminEvents({ adminUserId }: Props) {
             <label><span>Event name</span><input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></label>
             <label><span>Date</span><input required type="date" value={form.event_date} onChange={(e) => setForm({ ...form, event_date: e.target.value })} /></label>
             <label><span>Client</span><input value={form.client_name} onChange={(e) => setForm({ ...form, client_name: e.target.value })} /></label>
-            <label><span>Venue</span><input value={form.venue_name} onChange={(e) => setForm({ ...form, venue_name: e.target.value })} /></label>
-            <label className="admin-event-address"><span>Venue address</span><input value={form.venue_address} onChange={(e) => setForm({ ...form, venue_address: e.target.value })} /></label>
+            <div className="admin-event-location-field">
+              <span>Location</span>
+              {!manualLocation ? (
+                <>
+                  <label className="admin-event-location-search">
+                    <Search size={15} />
+                    <input
+                      value={locationQuery}
+                      onChange={(event) => {
+                        setLocationQuery(event.target.value);
+                        setLocationSuggestions([]);
+                        setForm((current) => ({
+                          ...current,
+                          venue_name: "",
+                          venue_address: "",
+                        }));
+                      }}
+                      placeholder="Search venue or address"
+                      autoComplete="off"
+                    />
+                    {locationSearching && <small>Searching…</small>}
+                  </label>
+                  {locationSuggestions.length > 0 && (
+                    <div className="admin-event-location-results">
+                      {locationSuggestions.map((location) => (
+                        <button type="button" key={location.id ?? `${location.name}-${location.address}`} onClick={() => chooseLocation(location)}>
+                          <MapPin size={14} />
+                          <span><strong>{location.name || location.address}</strong>{location.address && <small>{location.address}</small>}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {(form.venue_name || form.venue_address) && (
+                    <small className="admin-event-selected-location">{[form.venue_name, form.venue_address].filter(Boolean).join(" · ")}</small>
+                  )}
+                  <button type="button" className="admin-event-manual-location" onClick={() => setManualLocation(true)}>Enter manually</button>
+                </>
+              ) : (
+                <div className="admin-event-manual-grid">
+                  <label><span>Venue</span><input value={form.venue_name} onChange={(e) => setForm({ ...form, venue_name: e.target.value })} /></label>
+                  <label><span>Address</span><input value={form.venue_address} onChange={(e) => setForm({ ...form, venue_address: e.target.value })} /></label>
+                  <button type="button" onClick={() => { setManualLocation(false); setLocationQuery([form.venue_name, form.venue_address].filter(Boolean).join(" · ")); }}>Back to search</button>
+                </div>
+              )}
+            </div>
             <label><span>Start time</span><input type="time" value={form.start_time} onChange={(e) => setForm({ ...form, start_time: e.target.value })} /></label>
             <label><span>End time</span><input type="time" value={form.end_time} onChange={(e) => setForm({ ...form, end_time: e.target.value })} /></label>
           </div>

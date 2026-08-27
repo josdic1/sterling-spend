@@ -642,3 +642,95 @@ button:disabled {
 .secondary-actions.single-action {
   grid-template-columns: 1fr;
 }
+
+/* Quiet search: available without competing with the expense list. */
+.recent-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.recent-search {
+  width: min(150px, 46vw);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--color-subtle);
+  border-bottom: 1px solid transparent;
+  transition: border-color 120ms ease, color 120ms ease;
+}
+
+.recent-search:focus-within {
+  color: var(--color-ink);
+  border-bottom-color: var(--color-line);
+}
+
+.recent-search input {
+  width: 100%;
+  min-width: 0;
+  padding: 4px 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--color-ink);
+  font-size: 11px;
+}
+
+.recent-search input::placeholder {
+  color: var(--color-subtle);
+}
+
+.recent-empty-search {
+  padding-block: 24px;
+}
+
+/* LIGHT / DARK */
+:root[data-theme="dark"] {
+  --color-ink: #edf3f7;
+  --color-subtle: #98a5b4;
+  --color-page: #0f151c;
+  --color-page-outer: #090d12;
+  --color-card: #151d26;
+  --color-line: #25313d;
+  --color-primary: #45b9c9;
+  --color-primary-strong: #2997aa;
+  --color-blue-soft: #172b45;
+  --color-blue: #79a8ff;
+  --color-gold-soft: #382d17;
+  --color-gold: #efb64a;
+  --color-pink-soft: #3a202b;
+  --color-pink: #ef9dbc;
+  --color-lavender-soft: #2b2443;
+  --color-lavender: #a48cf0;
+  --color-green-soft: #173626;
+  --color-green: #4bc27a;
+  --color-orange-soft: #3c271e;
+  --color-orange: #ff8756;
+  --shadow-card: 0 6px 16px rgba(0, 0, 0, .16);
+  --shadow-raised: 0 12px 28px rgba(0, 0, 0, .24);
+}
+
+.theme-toggle {
+  width: 36px;
+  height: 36px;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 36px;
+  padding: 0;
+  border: 1px solid var(--color-line);
+  border-radius: 50%;
+  background: var(--color-card);
+  color: var(--color-subtle);
+  box-shadow: var(--shadow-card);
+}
+
+.theme-toggle:hover {
+  color: var(--color-ink);
+}
+
+.admin-queue-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}

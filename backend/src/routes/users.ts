@@ -409,6 +409,26 @@ router.patch("/:userId/active", async (req, res) => {
 
     const existingUser = existingResult.rows[0];
 
+    if (!is_active && existingUser.role === "admin") {
+      const activeAdminResult = await client.query(
+        `
+          SELECT COUNT(*)::int AS count
+          FROM users
+          WHERE role = 'admin'
+            AND is_active = TRUE
+            AND id <> $1
+        `,
+        [userId],
+      );
+
+      if (Number(activeAdminResult.rows[0]?.count ?? 0) === 0) {
+        await client.query("ROLLBACK");
+        return res.status(409).json({
+          error: "Sterling Spend must always have at least one active admin",
+        });
+      }
+    }
+
     if (existingUser.is_active === is_active) {
       await client.query("COMMIT");
       return res.json(existingUser);

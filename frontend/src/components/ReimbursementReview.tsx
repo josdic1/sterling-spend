@@ -1,15 +1,22 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
   Car,
   CheckCircle2,
+  Flag,
+  Pencil,
   ReceiptText,
+  Save,
   X,
 } from "lucide-react";
 import { format } from "date-fns";
 import {
+  correctExpense,
+  flagExpense,
+  getExpenseCategories,
   submitReimbursement,
   type CurrentReimbursement,
+  type ExpenseCategory,
 } from "../lib/api";
 import "./ReimbursementReview.css";
 
@@ -18,6 +25,7 @@ type ReimbursementReviewProps = {
   reimbursement: CurrentReimbursement;
   onCancel: () => void;
   onSubmitted: () => void;
+  onChanged: () => void;
 };
 
 function formatMoney(value: string | number) {
@@ -43,6 +51,12 @@ function issueTitle(
       : `Toll mismatch · ${issue.event_name}`;
   }
 
+  if (issue.type === "employee_flag") {
+    return `Employee flagged receipt · ${issue.vendor || "Receipt"}${
+      issue.event_name ? ` · ${issue.event_name}` : ""
+    }`;
+  }
+
   return `Possible duplicate · ${issue.vendor}${
     issue.event_name ? ` · ${issue.event_name}` : ""
   }`;
@@ -53,16 +67,98 @@ export default function ReimbursementReview({
   reimbursement,
   onCancel,
   onSubmitted,
+  onChanged,
 }: ReimbursementReviewProps) {
   const [submitting, setSubmitting] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState("");
+  const [categories, setCategories] = useState<ExpenseCategory[]>([]);
+  const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState({
+    vendor: "",
+    expense_date: "",
+    category_id: "",
+    claimed_amount: "",
+    reason: "",
+  });
+  const [flaggingExpenseId, setFlaggingExpenseId] = useState<string | null>(null);
+  const [flagReason, setFlagReason] = useState("");
+  const [busyExpenseId, setBusyExpenseId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (reimbursement.status !== "open") return;
+    void getExpenseCategories()
+      .then((rows) => setCategories(rows.filter((row) => row.is_active)))
+      .catch(() => undefined);
+  }, [reimbursement.status]);
 
   const canSubmit =
     reimbursement.status === "open" &&
     reimbursement.analysis.blocker_count === 0;
   const isPaid = reimbursement.status === "paid";
   const issueTitles = reimbursement.analysis.known_issues.map(issueTitle);
+  const flaggedExpenseIds = useMemo(
+    () => new Set(
+      reimbursement.analysis.known_issues
+        .filter((issue) => issue.type === "employee_flag" && !issue.resolved)
+        .map((issue) => issue.type === "employee_flag" ? issue.expense_id : ""),
+    ),
+    [reimbursement.analysis.known_issues],
+  );
+
+  function beginCorrection(expense: CurrentReimbursement["expenses"][number]) {
+    setEditingExpenseId(expense.id);
+    setFlaggingExpenseId(null);
+    setEditDraft({
+      vendor: expense.vendor ?? "",
+      expense_date: String(expense.expense_date).slice(0, 10),
+      category_id: expense.category_id,
+      claimed_amount: String(expense.claimed_amount),
+      reason: "",
+    });
+    setError("");
+  }
+
+  async function saveCorrection() {
+    if (!editingExpenseId) return;
+    const amount = Number(editDraft.claimed_amount);
+    if (!editDraft.expense_date || !editDraft.category_id || !Number.isFinite(amount) || amount < 0 || !editDraft.reason.trim()) return;
+
+    try {
+      setBusyExpenseId(editingExpenseId);
+      setError("");
+      await correctExpense(editingExpenseId, {
+        user_id: userId,
+        vendor: editDraft.vendor.trim() || null,
+        expense_date: editDraft.expense_date,
+        category_id: editDraft.category_id,
+        claimed_amount: amount,
+        reason: editDraft.reason.trim(),
+      });
+      setEditingExpenseId(null);
+      onChanged();
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : "Could not correct receipt.");
+    } finally {
+      setBusyExpenseId(null);
+    }
+  }
+
+  async function submitFlag(expenseId: string) {
+    if (!flagReason.trim()) return;
+    try {
+      setBusyExpenseId(expenseId);
+      setError("");
+      await flagExpense(expenseId, userId, flagReason.trim());
+      setFlaggingExpenseId(null);
+      setFlagReason("");
+      onChanged();
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : "Could not flag receipt.");
+    } finally {
+      setBusyExpenseId(null);
+    }
+  }
 
   async function handleSubmit() {
     try {
@@ -198,29 +294,75 @@ export default function ReimbursementReview({
             No expenses this month.
           </p>
         ) : (
-          reimbursement.expenses.map((expense) => (
-            <article
-              className="reimbursement-review-row"
-              key={expense.id}
-            >
-              <div>
-                <strong>
-                  {expense.vendor || "Expense"}
-                </strong>
+          reimbursement.expenses.map((expense) => {
+            const editing = editingExpenseId === expense.id;
+            const flagging = flaggingExpenseId === expense.id;
+            const alreadyFlagged = flaggedExpenseIds.has(expense.id);
+            const busy = busyExpenseId === expense.id;
 
-                <span>
-                  {expense.category_name}
-                  {expense.event_name
-                    ? ` · ${expense.event_name}`
-                    : ""}
-                </span>
-              </div>
+            return (
+              <article
+                className={`reimbursement-review-row receipt-review-row ${editing || flagging ? "expanded" : ""}`}
+                key={expense.id}
+              >
+                <div className="receipt-review-summary">
+                  <div>
+                    <strong>{expense.vendor || "Expense"}</strong>
+                    <span>
+                      {expense.category_name}
+                      {expense.event_name ? ` · ${expense.event_name}` : ""}
+                    </span>
+                  </div>
+                  <strong>{formatMoney(expense.claimed_amount)}</strong>
+                </div>
 
-              <strong>
-                {formatMoney(expense.claimed_amount)}
-              </strong>
-            </article>
-          ))
+                <div className="receipt-review-actions">
+                  {reimbursement.status === "open" ? (
+                    <button type="button" onClick={() => beginCorrection(expense)}>
+                      <Pencil size={14} /> Correct
+                    </button>
+                  ) : alreadyFlagged ? (
+                    <span className="receipt-flagged"><Flag size={13} /> Flagged for Jill</span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingExpenseId(null);
+                        setFlaggingExpenseId(flagging ? null : expense.id);
+                        setFlagReason("");
+                      }}
+                    >
+                      <Flag size={14} /> Report mistake
+                    </button>
+                  )}
+                </div>
+
+                {editing && (
+                  <div className="receipt-correction-form">
+                    <label><span>Vendor</span><input value={editDraft.vendor} onChange={(event) => setEditDraft({ ...editDraft, vendor: event.target.value })} /></label>
+                    <label><span>Date</span><input type="date" value={editDraft.expense_date} onChange={(event) => setEditDraft({ ...editDraft, expense_date: event.target.value })} /></label>
+                    <label><span>Amount</span><input inputMode="decimal" value={editDraft.claimed_amount} onChange={(event) => setEditDraft({ ...editDraft, claimed_amount: event.target.value })} /></label>
+                    <label><span>Category</span><select value={editDraft.category_id} onChange={(event) => setEditDraft({ ...editDraft, category_id: event.target.value })}>{categories.map((category) => <option value={category.id} key={category.id}>{category.name}</option>)}</select></label>
+                    <label className="receipt-correction-reason"><span>Why are you correcting it?</span><input value={editDraft.reason} maxLength={500} onChange={(event) => setEditDraft({ ...editDraft, reason: event.target.value })} placeholder="Required for history" /></label>
+                    <div className="receipt-correction-buttons">
+                      <button type="button" className="save" disabled={busy || !editDraft.reason.trim()} onClick={() => void saveCorrection()}><Save size={14} /> {busy ? "Saving…" : "Save correction"}</button>
+                      <button type="button" onClick={() => setEditingExpenseId(null)}>Cancel</button>
+                    </div>
+                  </div>
+                )}
+
+                {flagging && (
+                  <div className="receipt-flag-form">
+                    <label><span>What is wrong with this receipt?</span><textarea value={flagReason} maxLength={500} onChange={(event) => setFlagReason(event.target.value)} placeholder="Tell Jill what needs attention" /></label>
+                    <div className="receipt-correction-buttons">
+                      <button type="button" className="flag" disabled={busy || !flagReason.trim()} onClick={() => void submitFlag(expense.id)}><Flag size={14} /> {busy ? "Sending…" : "Flag for Jill"}</button>
+                      <button type="button" onClick={() => setFlaggingExpenseId(null)}>Cancel</button>
+                    </div>
+                  </div>
+                )}
+              </article>
+            );
+          })
         )}
       </section>
 
@@ -337,6 +479,11 @@ export default function ReimbursementReview({
                 <span>
                   Planned {formatMoney(issue.planned_amount)} · Evidence {formatMoney(issue.evidence_amount)} · Difference {issue.difference >= 0 ? "+" : ""}{formatMoney(issue.difference)}
                 </span>
+              </>
+            ) : issue.type === "employee_flag" ? (
+              <>
+                <strong>Receipt flagged for Jill · {issue.vendor || "Receipt"}</strong>
+                <span>{issue.reason}{issue.event_name ? ` · ${issue.event_name}` : ""}</span>
               </>
             ) : (
               <>

@@ -70,6 +70,12 @@ function adminIssueTitle(
     return `${issue.evidence_amount === 0 ? "Toll evidence missing" : "Toll mismatch"} · ${issue.event_name}`;
   }
 
+  if (issue.type === "employee_flag") {
+    return `Employee flagged receipt · ${issue.vendor || "Receipt"}${
+      issue.event_name ? ` · ${issue.event_name}` : ""
+    }`;
+  }
+
   return `Possible duplicate · ${issue.vendor}${
     issue.event_name ? ` · ${issue.event_name}` : ""
   }`;
@@ -649,6 +655,11 @@ export default function AdminReimbursementDetail({
                     Planned {formatMoney(issue.planned_amount)} · Evidence {formatMoney(issue.evidence_amount)} · Difference {issue.difference >= 0 ? "+" : ""}{formatMoney(issue.difference)}
                   </span>
                 </>
+              ) : issue.type === "employee_flag" ? (
+                <>
+                  <strong>Employee flagged receipt · {issue.vendor || "Receipt"}</strong>
+                  <span>{issue.reason}{issue.event_name ? ` · ${issue.event_name}` : ""}</span>
+                </>
               ) : (
                 <>
                   <strong>Possible duplicate · {issue.vendor}</strong>
@@ -672,7 +683,7 @@ export default function AdminReimbursementDetail({
                     )}
                   </div>
                 </div>
-              ) : detail.status === "submitted" ? (
+              ) : (
                 <div className="admin-issue-actions">
                   <input
                     type="text"
@@ -702,7 +713,7 @@ export default function AdminReimbursementDetail({
                       : "Resolve issue"}
                   </button>
                 </div>
-              ) : null}
+              )}
             </div>
           ))}
         </section>

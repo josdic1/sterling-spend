@@ -53,6 +53,7 @@ export type Expense = {
   description: string | null;
   claimed_amount: string;
   approved_amount: string;
+  category_id: string;
   category_name: string;
   event_id: string | null;
   event_number: string | null;
@@ -100,6 +101,18 @@ export type ReimbursementKnownIssue =
       claimed_amount: number;
       count: number;
       expense_ids: string[];
+    } & ReimbursementIssueResolution)
+  | ({
+      issue_key: string;
+      type: "employee_flag";
+      expense_id: string;
+      event_id: string | null;
+      event_name: string | null;
+      vendor: string | null;
+      claimed_amount: number;
+      reason: string;
+      flagged_at: string;
+      flagged_by_name: string;
     } & ReimbursementIssueResolution);
 
 export type ReimbursementSubmissionBlocker =
@@ -281,6 +294,47 @@ export async function createExpense(input: {
   }
 
   return body;
+}
+
+export async function correctExpense(
+  expenseId: string,
+  input: {
+    user_id: string;
+    vendor: string | null;
+    expense_date: string;
+    category_id: string;
+    claimed_amount: number;
+    reason: string;
+  },
+): Promise<CreatedExpense> {
+  const response = await fetch(`/api/expenses/${expenseId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+
+  const body = await response.json();
+  if (!response.ok) {
+    throw new Error(body.error ?? "Could not correct receipt");
+  }
+  return body;
+}
+
+export async function flagExpense(
+  expenseId: string,
+  userId: string,
+  reason: string,
+): Promise<void> {
+  const response = await fetch(`/api/expenses/${expenseId}/flag`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ user_id: userId, reason }),
+  });
+
+  const body = await response.json();
+  if (!response.ok) {
+    throw new Error(body.error ?? "Could not flag receipt");
+  }
 }
 
 export async function uploadExpenseReceipt(
@@ -692,6 +746,28 @@ export type AdminEventInput = {
   end_time: string | null;
   assigned_user_ids: string[];
 };
+
+export type AdminLocationSuggestion = {
+  id: string | null;
+  name: string;
+  address: string;
+};
+
+export async function searchAdminEventLocations(
+  adminUserId: string,
+  query: string,
+): Promise<AdminLocationSuggestion[]> {
+  const response = await fetch("/api/events/admin/location-search", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ requesting_user_id: adminUserId, query }),
+  });
+  const body = await response.json();
+  if (!response.ok) {
+    throw new Error(body.error ?? "Could not search locations");
+  }
+  return body.suggestions ?? [];
+}
 
 export async function getAdminEvents(
   adminUserId: string,

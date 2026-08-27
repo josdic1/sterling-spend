@@ -69,7 +69,7 @@
   align-items: center;
   padding: 0 9px;
   border-radius: 999px;
-  background: #edf0f4;
+  background: var(--color-line);
   color: var(--color-subtle) !important;
   font-weight: 800;
 }
@@ -80,7 +80,7 @@
 }
 
 .admin-today-status.active {
-  background: #202735;
+  background: var(--color-ink);
   color: white !important;
 }
 
@@ -135,7 +135,7 @@
   place-items: center;
   padding: 0 6px;
   border-radius: 999px;
-  background: #edf0f4;
+  background: var(--color-line);
   color: var(--color-subtle);
   font-size: 11px;
   font-weight: 800;

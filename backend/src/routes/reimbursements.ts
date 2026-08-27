@@ -44,6 +44,18 @@ type KnownIssue =
       claimed_amount: number;
       count: number;
       expense_ids: string[];
+    } & KnownIssueResolution)
+  | ({
+      issue_key: string;
+      type: "employee_flag";
+      expense_id: string;
+      event_id: string | null;
+      event_name: string | null;
+      vendor: string | null;
+      claimed_amount: number;
+      reason: string;
+      flagged_at: string;
+      flagged_by_name: string;
     } & KnownIssueResolution);
 
 function roundMoney(value: number) {
@@ -53,6 +65,12 @@ function roundMoney(value: number) {
 function knownIssueTitle(issue: KnownIssue) {
   if (issue.type === "toll_mismatch") {
     return `${issue.evidence_amount === 0 ? "Toll evidence missing" : "Toll mismatch"} · ${issue.event_name}`;
+  }
+
+  if (issue.type === "employee_flag") {
+    return `Employee flagged receipt · ${issue.vendor || "Receipt"}${
+      issue.event_name ? ` · ${issue.event_name}` : ""
+    }`;
   }
 
   return `Possible duplicate · ${issue.vendor}${
@@ -178,6 +196,34 @@ async function getReimbursementAnalysis(
     [reimbursementId],
   );
 
+  const employeeFlagResult = await db.query(
+    `
+      SELECT
+        al.id AS flag_id,
+        al.reason,
+        al.changed_at AS flagged_at,
+        changed_by.name AS flagged_by_name,
+        e.id AS expense_id,
+        e.event_id,
+        ev.name AS event_name,
+        e.vendor,
+        e.claimed_amount
+      FROM audit_log al
+      JOIN expenses e
+        ON al.entity_type = 'expense'
+        AND al.entity_id = e.id
+      JOIN users changed_by
+        ON changed_by.id = al.changed_by_user_id
+      LEFT JOIN events ev
+        ON ev.id = e.event_id
+      WHERE e.reimbursement_id = $1
+        AND al.action = 'employee_flagged'
+        AND al.field_name = 'receipt_issue'
+      ORDER BY al.changed_at
+    `,
+    [reimbursementId],
+  );
+
   const resolutionResult = await db.query(
     `
       SELECT DISTINCT ON (al.old_value)
@@ -258,6 +304,24 @@ async function getReimbursementAnalysis(
       claimed_amount: Number(row.claimed_amount),
       count: Number(row.duplicate_count),
       expense_ids: expenseIds,
+      ...resolutionFor(resolutionMap, issueKey),
+    });
+  }
+
+  for (const row of employeeFlagResult.rows) {
+    const issueKey = `employee_flag:${row.flag_id}`;
+
+    knownIssues.push({
+      issue_key: issueKey,
+      type: "employee_flag",
+      expense_id: row.expense_id,
+      event_id: row.event_id,
+      event_name: row.event_name,
+      vendor: row.vendor,
+      claimed_amount: Number(row.claimed_amount),
+      reason: row.reason ?? "Employee reported a receipt mistake",
+      flagged_at: row.flagged_at,
+      flagged_by_name: row.flagged_by_name,
       ...resolutionFor(resolutionMap, issueKey),
     });
   }
@@ -572,6 +636,7 @@ router.get("/current/:userId", async (req, res) => {
         e.description,
         e.claimed_amount,
         e.approved_amount,
+        c.id AS category_id,
         c.name AS category_name,
         ev.id AS event_id,
         ev.event_number,
@@ -1075,9 +1140,9 @@ router.post("/:reimbursementId/issues/resolve", async (req, res) => {
     });
   }
 
-  if (reimbursementResult.rows[0].status !== "submitted") {
+  if (reimbursementResult.rows[0].status === "open") {
     return res.status(400).json({
-      error: "Issues can only be resolved during submitted review",
+      error: "Issues can only be resolved after submission",
     });
   }
 

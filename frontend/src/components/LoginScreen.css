@@ -3,8 +3,8 @@
   display: grid;
   place-items: center;
   padding: 24px;
-  background: #f3f6fa;
-  color: #202735;
+  background: var(--color-page);
+  color: var(--color-ink);
 }
 
 .login-shell {
@@ -14,23 +14,41 @@
 }
 
 .dev-login-buttons {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
-  padding-inline: 28px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  padding-inline: 8px;
 }
 
 .dev-login-buttons button {
-  min-height: 66px;
-  border: 1px solid #202735;
-  border-radius: 18px;
-  background: transparent;
-  color: #202735;
+  min-height: 40px;
+  max-width: 100%;
+  border: 1px solid color-mix(in srgb, var(--color-ink) 22%, var(--color-line));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-card) 92%, transparent);
+  color: var(--color-ink);
   font: inherit;
-  font-size: 18px;
-  font-weight: 800;
-  letter-spacing: .04em;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 12px;
+}
+
+.dev-login-name {
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.dev-login-role {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--color-subtle);
+  line-height: 1.1;
+  white-space: nowrap;
 }
 
 .dev-login-buttons button:disabled {
@@ -40,8 +58,8 @@
 
 .login-card {
   width: 100%;
-  background: white;
-  border: 1px solid #e4e8ef;
+  background: var(--color-card);
+  border: 1px solid var(--color-line);
   border-radius: 24px;
   padding: 32px;
 }
@@ -55,15 +73,15 @@
 }
 
 .login-brand strong { font-size: 18px; }
-.login-brand span { color: #8a94a6; font-size: 14px; letter-spacing: 0; }
+.login-brand span { color: var(--color-subtle); font-size: 14px; letter-spacing: 0; }
 .login-heading h1 { margin: 0; font-size: 34px; }
-.login-heading p { margin: 8px 0 26px; color: #7a8496; }
+.login-heading p { margin: 8px 0 26px; color: var(--color-subtle); }
 .login-card form { display: grid; gap: 18px; }
 .login-card label { display: grid; gap: 7px; }
-.login-card label span { font-size: 12px; font-weight: 800; color: #7e899c; text-transform: uppercase; letter-spacing: .08em; }
-.login-card input { width: 100%; box-sizing: border-box; border: 1px solid #d9dee7; border-radius: 12px; padding: 14px 15px; font: inherit; font-size: 16px; }
+.login-card label span { font-size: 12px; font-weight: 800; color: var(--color-subtle); text-transform: uppercase; letter-spacing: .08em; }
+.login-card input { background: var(--color-card); color: var(--color-ink); width: 100%; box-sizing: border-box; border: 1px solid var(--color-line); border-radius: 12px; padding: 14px 15px; font: inherit; font-size: 16px; }
 .login-card input:focus { outline: 2px solid #38b4c7; outline-offset: 1px; border-color: transparent; }
-.login-card button { min-height: 52px; border: 0; border-radius: 14px; background: #39b4c7; color: white; font: inherit; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; }
+.login-card button { min-height: 52px; border: 0; border-radius: 14px; background: var(--color-primary); color: white; font: inherit; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; }
 .login-card button:disabled { opacity: .55; cursor: default; }
 .login-error { padding: 12px 14px; border-radius: 12px; background: #fff0f0; color: #a33a3a; font-size: 14px; }
 
@@ -73,20 +91,12 @@
   padding-inline: 12px;
 }
 
-.dev-reset-panel > span {
-  color: #8a94a6;
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: .09em;
-  text-align: center;
-}
-
 .dev-reset-panel button {
   min-height: 48px;
-  border: 1px solid #c6ccd6;
+  border: 1px solid var(--color-line);
   border-radius: 12px;
   background: transparent;
-  color: #202735;
+  color: var(--color-ink);
   font: inherit;
   font-size: 12px;
   font-weight: 900;
@@ -101,7 +111,7 @@
 
 .dev-reset-success {
   margin: 2px 0 0;
-  color: #526071;
+  color: var(--color-subtle);
   font-size: 12px;
   line-height: 1.45;
   text-align: center;
@@ -112,3 +122,16 @@
   color: #9b2f24;
   background: #fff7f6;
 }
+
+.login-theme-toggle {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: -16px;
+}
+
+.dev-reset-panel .dev-demo-load {
+  border-color: color-mix(in srgb, var(--color-primary) 45%, var(--color-line));
+  color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 7%, transparent);
+}
+

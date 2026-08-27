@@ -41,3 +41,109 @@
   .admin-event-address { grid-column: auto; }
   .admin-events-toolbar button, .admin-event-save { width: 100%; }
 }
+
+.admin-event-location-field {
+  position: relative;
+  display: grid;
+  gap: 7px;
+  grid-column: span 2;
+}
+
+.admin-event-location-field > span,
+.admin-event-manual-grid label > span {
+  color: var(--color-subtle);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.admin-event-location-search {
+  min-height: 42px;
+  display: flex !important;
+  align-items: center;
+  gap: 8px !important;
+  padding: 0 12px;
+  border: 1px solid var(--color-line);
+  border-radius: 11px;
+  background: var(--color-card);
+  color: var(--color-subtle);
+}
+
+.admin-event-location-search input {
+  min-width: 0;
+  flex: 1;
+  padding: 0 !important;
+  border: 0 !important;
+  outline: 0;
+  background: transparent !important;
+  color: var(--color-ink);
+}
+
+.admin-event-location-search small {
+  color: var(--color-subtle);
+  font-size: 10px;
+}
+
+.admin-event-location-results {
+  overflow: hidden;
+  border: 1px solid var(--color-line);
+  border-radius: 12px;
+  background: var(--color-card);
+  box-shadow: var(--shadow-raised);
+}
+
+.admin-event-location-results button {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 11px 12px;
+  border: 0;
+  border-bottom: 1px solid var(--color-line);
+  background: transparent;
+  color: var(--color-ink);
+  text-align: left;
+}
+
+.admin-event-location-results button:last-child { border-bottom: 0; }
+.admin-event-location-results button:hover { background: var(--color-page); }
+.admin-event-location-results button > span { display: grid; gap: 2px; }
+.admin-event-location-results strong { font-size: 12.5px; }
+.admin-event-location-results small { color: var(--color-subtle); font-size: 11px; }
+
+.admin-event-selected-location {
+  color: var(--color-subtle);
+  font-size: 11px;
+}
+
+.admin-event-manual-location {
+  width: fit-content;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-subtle);
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+.admin-event-manual-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.admin-event-manual-grid > button {
+  grid-column: 1 / -1;
+  width: fit-content;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-subtle);
+  font-size: 10.5px;
+}
+
+@media (max-width: 640px) {
+  .admin-event-location-field { grid-column: 1 / -1; }
+  .admin-event-manual-grid { grid-template-columns: 1fr; }
+}
