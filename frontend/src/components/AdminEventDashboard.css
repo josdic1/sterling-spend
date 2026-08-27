@@ -317,7 +317,7 @@
 .admin-event-expense-table-head,
 .admin-event-expense-row {
   display: grid;
-  grid-template-columns: minmax(180px, 1.5fr) minmax(130px, 1fr) minmax(120px, .9fr) 110px 110px;
+  grid-template-columns: minmax(170px, 1.45fr) minmax(130px, 1fr) minmax(120px, .9fr) 165px 110px;
   gap: 14px;
   align-items: center;
 }
@@ -528,12 +528,34 @@
   .admin-event-timeline-row time { grid-column: 2; }
 }
 
-.admin-event-expense-row.has-issue {
-  background: var(--color-gold-soft);
-  box-shadow: inset 3px 0 0 var(--color-gold);
+.admin-event-date-cell {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 2px 6px;
+  min-width: 0;
 }
 
-.admin-event-expense-row.has-issue > span:nth-child(4) {
-  color: var(--color-gold);
+.admin-event-date-cell > span {
+  min-width: 0;
+}
+
+.admin-event-date-cell.has-date-issue {
+  color: var(--color-orange);
+  font-weight: 850;
+}
+
+.admin-event-date-cell.has-date-issue > svg {
+  grid-row: 1 / span 2;
+  color: var(--color-orange);
+  stroke-width: 2.35;
+}
+
+.admin-event-date-cell.has-date-issue > small {
+  grid-column: 2;
+  color: var(--color-orange);
+  font-size: 9.5px;
   font-weight: 800;
+  line-height: 1.2;
+  white-space: nowrap;
 }

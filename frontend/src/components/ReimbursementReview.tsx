@@ -453,11 +453,9 @@ export default function ReimbursementReview({
 
           <div>
             {issueTitles.length > 0 ? (
-              <div className="reimbursement-review-issue-summary">
-                {issueTitles.map((title) => (
-                  <strong key={title}>{title}</strong>
-                ))}
-              </div>
+              <strong>
+                {issueTitles.length} {issueTitles.length === 1 ? "issue" : "issues"} to review
+              </strong>
             ) : (
               <strong>No known issues</strong>
             )}

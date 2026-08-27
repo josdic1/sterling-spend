@@ -63,24 +63,6 @@ function formatFileSize(value: number) {
   return `${(value / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function adminIssueTitle(
-  issue: AdminReimbursementDetailData["analysis"]["known_issues"][number],
-) {
-  if (issue.type === "toll_mismatch") {
-    return `${issue.evidence_amount === 0 ? "Toll evidence missing" : "Toll mismatch"} · ${issue.event_name}`;
-  }
-
-  if (issue.type === "employee_flag") {
-    return `Employee flagged receipt · ${issue.vendor || "Receipt"}${
-      issue.event_name ? ` · ${issue.event_name}` : ""
-    }`;
-  }
-
-  return `Possible duplicate · ${issue.vendor}${
-    issue.event_name ? ` · ${issue.event_name}` : ""
-  }`;
-}
-
 export default function AdminReimbursementDetail({
   adminUserId,
   reimbursementId,
@@ -627,13 +609,9 @@ export default function AdminReimbursementDetail({
             <AlertTriangle size={20} />
             <div>
               {detail.analysis.unresolved_issue_count > 0 ? (
-                <div className="admin-detail-issue-summary">
-                  {detail.analysis.known_issues
-                    .filter((issue) => !issue.resolved)
-                    .map((issue) => (
-                      <strong key={issue.issue_key}>{adminIssueTitle(issue)}</strong>
-                    ))}
-                </div>
+                <strong>
+                  {detail.analysis.unresolved_issue_count} unresolved {detail.analysis.unresolved_issue_count === 1 ? "issue" : "issues"}
+                </strong>
               ) : (
                 <strong>All known issues resolved</strong>
               )}

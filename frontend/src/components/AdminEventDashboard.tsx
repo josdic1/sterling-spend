@@ -291,7 +291,11 @@ export default function AdminEventDashboard({
               <span className={`admin-event-category ${expense.category_name === "Tolls" ? "toll" : ""}`}>
                 {expense.category_name}
               </span>
-              <span>{shortDate(expense.expense_date)}</span>
+              <span className={`admin-event-date-cell ${dateIssue ? "has-date-issue" : ""}`}>
+                {dateIssue && <CalendarDays size={15} aria-hidden="true" />}
+                <span>{shortDate(expense.expense_date)}</span>
+                {dateIssue && <small>Mismatch · Event {shortDate(event.event_date)}</small>}
+              </span>
               <div className="admin-event-amount-cell">
                 <strong>{money(expense.approved_amount)}</strong>
                 {expense.approved_amount !== expense.claimed_amount && (
