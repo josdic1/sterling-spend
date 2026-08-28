@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Sterling Spend — Product Walkthrough</title>
+<style>
+:root{
+  --bg:#edf1f5;
+  --surface:#ffffff;
+  --surface-2:#f7f9fb;
+  --ink:#111827;
+  --muted:#6b7280;
+  --line:#e5e9ef;
+  --navy:#0d1b2a;
+  --teal:#178ea2;
+  --teal-soft:#e6f5f7;
+  --green:#17864b;
+  --green-soft:#e7f5ec;
+  --amber:#a96600;
+  --amber-soft:#fff5df;
+  --red:#b42318;
+  --red-soft:#fff0ee;
+  --shadow:0 20px 60px rgba(13,27,42,.10),0 2px 10px rgba(13,27,42,.05);
+  --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Inter,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;font-family:var(--font);color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased}
+button{font:inherit}
+.shell{
+  min-height:100vh;
+  display:grid;
+  grid-template-columns:minmax(360px,460px) minmax(320px,470px);
+  gap:34px;
+  justify-content:center;
+  align-items:center;
+  padding:34px;
+}
+.phone{
+  width:100%;
+  height:min(820px,calc(100vh - 68px));
+  min-height:620px;
+  background:var(--surface-2);
+  border:1px solid rgba(17,24,39,.08);
+  border-radius:30px;
+  box-shadow:var(--shadow);
+  overflow:hidden;
+  position:relative;
+}
+.app{
+  height:100%;
+  display:flex;
+  flex-direction:column;
+}
+.topbar{
+  height:70px;
+  flex:0 0 70px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 20px;
+  background:rgba(255,255,255,.96);
+  border-bottom:1px solid var(--line);
+}
+.brand b{display:block;font-size:16px;letter-spacing:-.01em}
+.brand span{display:block;font-size:11px;color:var(--muted);margin-top:2px}
+.avatar{
+  width:34px;height:34px;border-radius:50%;
+  display:grid;place-items:center;
+  background:var(--navy);color:white;font-size:11px;font-weight:800;
+}
+.screen{
+  flex:1;min-height:0;overflow:auto;padding:18px 18px 96px;
+  scroll-behavior:smooth;
+}
+.bottom-tabs{
+  position:absolute;left:0;right:0;bottom:0;height:72px;
+  background:rgba(255,255,255,.97);
+  border-top:1px solid var(--line);
+  display:grid;grid-template-columns:repeat(4,1fr);
+  padding:7px 8px calc(7px + env(safe-area-inset-bottom));
+}
+.tab{display:grid;place-items:center;align-content:center;gap:4px;color:#8a93a2;font-size:10px;font-weight:700}
+.tab svg{width:18px;height:18px}
+.tab.active{color:var(--navy)}
+.tab.active svg{stroke-width:2.4}
+
+.guide{
+  width:100%;
+}
+.guide-card{
+  background:var(--surface);
+  border:1px solid rgba(17,24,39,.07);
+  border-radius:24px;
+  box-shadow:var(--shadow);
+  padding:24px;
+}
+.guide-top{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px
+}
+.stage{
+  display:inline-flex;align-items:center;gap:8px;
+  font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)
+}
+.stage-dot{width:8px;height:8px;border-radius:50%;background:var(--teal)}
+.stage.controller .stage-dot{background:var(--navy)}
+.stepcount{font-size:12px;color:var(--muted);font-weight:700}
+.guide h1{font-size:27px;line-height:1.08;margin:0 0 10px;letter-spacing:-.035em}
+.guide p{font-size:15px;line-height:1.55;margin:0;color:#475467}
+.why{
+  margin-top:18px;padding:14px 15px;border-radius:14px;
+  background:var(--surface-2);border:1px solid var(--line);
+  font-size:13px;line-height:1.45;color:#344054
+}
+.why strong{color:var(--ink)}
+.controls{display:grid;grid-template-columns:112px 1fr;gap:10px;margin-top:20px}
+.control{
+  min-height:48px;border-radius:12px;border:1px solid var(--line);
+  background:var(--surface);font-weight:800;color:#475467;cursor:pointer
+}
+.control.next{background:var(--navy);color:white;border-color:var(--navy)}
+.control:disabled{opacity:.35;cursor:default}
+.track{display:flex;gap:5px;margin-top:16px}
+.track span{height:4px;flex:1;border-radius:999px;background:#e7ebf0}
+.track span.done{background:#90a0b2}
+.track span.current{background:var(--teal)}
+.restart{
+  border:0;background:none;padding:0;color:var(--muted);font-size:12px;font-weight:700;cursor:pointer
+}
+
+/* app primitives */
+.eyebrow{font-size:10px;letter-spacing:.09em;text-transform:uppercase;font-weight:800;color:var(--muted)}
+.h1{font-size:26px;letter-spacing:-.035em;font-weight:800;line-height:1.05}
+.h2{font-size:18px;font-weight:800;letter-spacing:-.02em}
+.meta{font-size:12px;color:var(--muted)}
+.card{
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:16px;
+  box-shadow:0 3px 12px rgba(13,27,42,.04);
+  padding:15px;
+}
+.stack{display:grid;gap:12px}
+.row{display:flex;align-items:center;gap:12px}
+.between{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.icon{
+  width:38px;height:38px;flex:0 0 38px;border-radius:11px;display:grid;place-items:center
+}
+.icon svg{width:18px;height:18px}
+.icon.teal{background:var(--teal-soft);color:var(--teal)}
+.icon.green{background:var(--green-soft);color:var(--green)}
+.icon.amber{background:var(--amber-soft);color:var(--amber)}
+.icon.navy{background:#e9edf3;color:var(--navy)}
+.btn{
+  border:0;border-radius:12px;padding:15px 16px;font-weight:800;cursor:pointer;
+}
+.btn.primary{background:var(--teal);color:white}
+.btn.dark{background:var(--navy);color:white}
+.btn.amber{background:var(--amber);color:white}
+.btn.ghost{background:var(--surface);border:1px solid var(--line);color:#475467}
+.btn.full{width:100%}
+.status{
+  display:inline-flex;align-items:center;gap:7px;padding:6px 9px;border-radius:999px;
+  font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.04em
+}
+.status.live{background:var(--green-soft);color:var(--green)}
+.status.warn{background:var(--amber-soft);color:var(--amber)}
+.live-dot{width:8px;height:8px;border-radius:50%;background:var(--green);position:relative}
+.live-dot::after{
+  content:"";position:absolute;inset:-2px;border:1.5px solid var(--green);border-radius:50%;
+  animation:sonar 1.8s ease-out infinite
+}
+@keyframes sonar{0%{transform:scale(.8);opacity:.6}75%,100%{transform:scale(2.4);opacity:0}}
+.event-hero{
+  padding:16px;border-radius:18px;background:var(--navy);color:#fff;
+  box-shadow:0 8px 20px rgba(13,27,42,.13)
+}
+.event-hero .eyebrow{color:#b8c3cf}
+.event-hero .meta{color:#cbd3dc}
+.kpi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.kpi{padding:12px;border-radius:13px;background:var(--surface);border:1px solid var(--line)}
+.kpi span{display:block;font-size:10px;color:var(--muted);font-weight:700}
+.kpi strong{display:block;margin-top:4px;font-size:16px}
+.activity-list{background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.activity{display:flex;align-items:center;gap:11px;padding:13px 14px}
+.activity+.activity{border-top:1px solid var(--line)}
+.activity .mid{flex:1;min-width:0}
+.activity .top{display:flex;justify-content:space-between;gap:10px}
+.activity .top strong,.activity .top b{font-size:14px}
+.issue{
+  padding:14px;border:1px solid #efd49b;background:var(--amber-soft);border-radius:14px
+}
+.issue-title{display:flex;align-items:center;gap:7px;color:#7c4a00;font-size:12px;font-weight:900}
+.issue p{margin:7px 0 0;color:#674000;font-size:13px;line-height:1.45;font-weight:650}
+.success{padding:14px;border:1px solid #b9dfc8;background:var(--green-soft);border-radius:14px}
+.success p{margin:7px 0 0;font-size:13px;line-height:1.45}
+.fieldset{display:grid;gap:10px}
+.field{
+  border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:11px 12px
+}
+.field span{display:block;font-size:10px;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.05em}
+.field strong{display:block;margin-top:4px;font-size:14px}
+.amount{font-size:34px;font-weight:850;letter-spacing:-.04em}
+.controller-nav{
+  display:flex;gap:6px;padding:10px 18px 0;background:var(--surface-2)
+}
+.controller-nav span{font-size:11px;font-weight:800;color:var(--muted);padding:8px 10px;border-radius:999px}
+.controller-nav span.active{background:var(--navy);color:white}
+.person-row{
+  padding:14px;background:var(--surface);border:1px solid var(--line);border-radius:14px
+}
+.person-row.active{
+  border-color:#aad7bc;
+  box-shadow:inset 3px 0 0 var(--green)
+}
+.audit{margin-top:10px;padding:11px 12px;border-left:2px solid #cbd5df;color:var(--muted);font-size:11px;line-height:1.5}
+.review-line{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line);font-size:13px}
+.review-line:last-child{border-bottom:0}
+.end-state{min-height:510px;display:grid;place-items:center;text-align:center;padding:24px}
+.mark{width:58px;height:58px;border-radius:50%;display:grid;place-items:center;margin:0 auto 14px;background:var(--green-soft);color:var(--green)}
+.mark svg{width:26px;height:26px}
+.hotspot{position:relative}
+.hotspot::after{
+  content:"";position:absolute;inset:-4px;border:2px solid rgba(23,142,162,.45);border-radius:inherit;
+  animation:focuspulse 1.8s ease-in-out infinite;pointer-events:none
+}
+@keyframes focuspulse{50%{box-shadow:0 0 0 6px rgba(23,142,162,.08);border-color:rgba(23,142,162,.75)}}
+.scan{
+  height:190px;border-radius:16px;background:
+  linear-gradient(180deg,#f4efe4,#fff 70%);border:1px solid var(--line);position:relative;overflow:hidden;
+  display:grid;place-items:center;color:#9b8d75
+}
+.scan::before{content:"RECEIPT";font-weight:900;letter-spacing:.08em}
+.scan::after{content:"";position:absolute;left:12%;right:12%;height:2px;background:var(--teal);box-shadow:0 0 12px rgba(23,142,162,.5);animation:scanline 1.5s ease-in-out infinite alternate}
+@keyframes scanline{from{top:24%}to{top:76%}}
+
+
+.intro-grid{display:grid;gap:10px;margin-top:16px}
+.intro-item{
+  display:flex;align-items:center;gap:11px;padding:13px 14px;
+  border-radius:14px;background:var(--surface);border:1px solid var(--line)
+}
+.intro-item .copy{min-width:0}
+.intro-item strong{display:block;font-size:14px}
+.intro-item span{display:block;margin-top:3px;font-size:11.5px;color:var(--muted);line-height:1.4}
+.controller-nav{overflow:auto;scrollbar-width:none}
+.controller-nav::-webkit-scrollbar{display:none}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.form-field{
+  border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:10px 11px
+}
+.form-field.wide{grid-column:1/-1}
+.form-field span{display:block;font-size:9.5px;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.05em}
+.form-field strong{display:block;margin-top:4px;font-size:13px}
+.assignment{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:11px 12px;border-radius:12px;border:1px solid var(--line);background:var(--surface)
+}
+.role-chip{
+  display:inline-flex;align-items:center;padding:5px 8px;border-radius:999px;
+  background:#eef1f4;color:#475467;font-size:10px;font-weight:800
+}
+.payment{
+  padding:14px;border-radius:14px;background:var(--surface);border:1px solid var(--line)
+}
+.payment .line{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--line);font-size:12px}
+.payment .line:last-child{border-bottom:0}
+
+@media(max-width:800px){
+  body{background:var(--surface-2)}
+  .shell{display:block;padding:0}
+  .phone{
+    height:calc(100vh - 218px);
+    min-height:470px;
+    border:0;border-radius:0;box-shadow:none;max-width:none
+  }
+  .guide{position:fixed;left:0;right:0;bottom:0;z-index:100}
+  .guide-card{
+    border-radius:22px 22px 0 0;border-left:0;border-right:0;border-bottom:0;
+    padding:15px 16px calc(15px + env(safe-area-inset-bottom));
+    box-shadow:0 -14px 36px rgba(13,27,42,.12)
+  }
+  .guide h1{font-size:19px;margin-bottom:5px}
+  .guide p{font-size:12.5px;line-height:1.4}
+  .why{display:none}
+  .guide-top{margin-bottom:9px}
+  .controls{margin-top:11px;grid-template-columns:94px 1fr}
+  .control{min-height:42px}
+  .track{margin-top:10px}
+}
+@media(prefers-reduced-motion:reduce){
+  *{scroll-behavior:auto!important}
+  .live-dot::after,.hotspot::after,.scan::after{animation:none!important}
+}
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="phone">
+    <div class="app">
+      <div id="screen" class="screen"></div>
+      <div id="tabs"></div>
+    </div>
+  </div>
+
+  <aside class="guide">
+    <div class="guide-card">
+      <div class="guide-top">
+        <div class="stage" id="stage"><span class="stage-dot"></span><span id="stageText"></span></div>
+        <div class="stepcount" id="stepCount"></div>
+      </div>
+      <h1 id="guideTitle"></h1>
+      <p id="guideBody"></p>
+      <div class="why" id="guideWhy"></div>
+      <div class="controls">
+        <button class="control" id="back">Back</button>
+        <button class="control next" id="next">Next</button>
+      </div>
+      <div class="track" id="track"></div>
+      <button class="restart" id="restart" style="margin-top:12px">Restart walkthrough</button>
+    </div>
+  </aside>
+</div>
+
+<script>
+const icon=(name)=>{
+  const p={
+    home:'<path d="M3 11 12 4l9 7v9h-6v-6H9v6H3z"/>',
+    list:'<path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/>',
+    receipt:'<path d="M6 3h12v18l-2.5-1.5L13 21l-2.5-1.5L8 21l-2-1.3z"/><path d="M9 8h6M9 12h6M9 16h3"/>',
+    user:'<circle cx="12" cy="8" r="3"/><path d="M5 21c.8-4.5 3.1-6.5 7-6.5s6.2 2 7 6.5"/>',
+    camera:'<path d="M4 8h3l1.5-2h5L15 8h5v11H4z"/><circle cx="12" cy="13.5" r="3.2"/>',
+    route:'<path d="M5 19c0-4 4-4 4-8s-4-4-4-8M19 5c0 4-4 4-4 8s4 4 4 8"/><circle cx="5" cy="3" r="1.5"/><circle cx="19" cy="21" r="1.5"/>',
+    toll:'<path d="M4 19h16M6 19V8h12v11M9 8V5h6v3M10 12h4"/>',
+    check:'<path d="M20 6 9.5 17 4 11.5"/>',
+    alert:'<circle cx="12" cy="12" r="9"/><path d="M12 7.5v5M12 16h.01"/>',
+    shield:'<path d="M12 3 20 6v5c0 5-3.4 8-8 10-4.6-2-8-5-8-10V6z"/><path d="m8.5 12 2.2 2.2 4.8-5"/>',
+    people:'<circle cx="9" cy="9" r="3"/><path d="M3 20c.8-4 3.2-6 6-6s5.2 2 6 6"/><path d="M16 7a3 3 0 0 1 0 6M17 14c2.2.5 3.6 2.3 4 6"/>'
+  };
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${p[name]||p.check}</svg>`;
+};
+
+const userTop=()=>`
+  <div class="topbar" style="margin:-18px -18px 18px">
+    <div class="brand"><b>Sterling Spend</b><span>Greg · Waitstaff</span></div>
+    <div class="avatar">GD</div>
+  </div>`;
+
+const controllerTop=(active='Today')=>`
+  <div class="topbar" style="margin:-18px -18px 0">
+    <div class="brand"><b>Sterling Spend</b><span>Jill · Admin</span></div>
+    <div class="avatar">JI</div>
+  </div>
+  <div class="controller-nav" style="margin:0 -18px 16px">
+    ${['Today','Events','People','Review'].map(item=>`<span class="${item===active?'active':''}">${item}</span>`).join('')}
+  </div>`;
+
+const employeeTabs=(active='Today')=>`
+  <div class="bottom-tabs">
+    <div class="tab ${active==='Today'?'active':''}">${icon('home')}<span>Today</span></div>
+    <div class="tab ${active==='Activity'?'active':''}">${icon('list')}<span>Activity</span></div>
+    <div class="tab">${icon('receipt')}<span>Past</span></div>
+    <div class="tab">${icon('user')}<span>Me</span></div>
+  </div>`;
+
+const steps=[
+{
+ segment:'Overview',
+ title:'Sterling Spend removes the expense chase.',
+ body:'Employees capture expenses while they work. Jill sees the same Event truth live, reviews only real exceptions, and keeps the audit trail intact.',
+ why:'<strong>Two jobs, one system:</strong> effortless capture for employees; immediate control for the controller.',
+ tabs:false,
+ render:()=>`${userTop()}
+  <div class="eyebrow">Product walkthrough</div>
+  <div class="h1" style="margin:4px 0 7px">From Event to approved expense.</div>
+  <div class="meta" style="font-size:13px;line-height:1.5">Follow one working day from Greg’s phone to Jill’s controller review.</div>
+  <div class="intro-grid">
+    <div class="intro-item"><div class="icon teal">${icon('camera')}</div><div class="copy"><strong>Capture, don’t key in</strong><span>Scan receipts; Sterling extracts the financial details.</span></div></div>
+    <div class="intro-item"><div class="icon green">${icon('route')}</div><div class="copy"><strong>Travel is automatic</strong><span>Planned mileage and tolls stay with the Event.</span></div></div>
+    <div class="intro-item"><div class="icon navy">${icon('shield')}</div><div class="copy"><strong>Shared, auditable truth</strong><span>Employee claim, controller approval, evidence and reasons remain visible.</span></div></div>
+  </div>`
+},
+{
+ segment:'Employee',
+ title:'Start with the Event — not an expense form.',
+ body:'Greg activates the Event he is working. That establishes the context for receipts, mileage and tolls without asking him to rebuild it later.',
+ why:'<strong>The employee mental model:</strong> “I’m working Feldman Wedding,” not “I’m opening a reimbursement record.”',
+ tabs:true,
+ render:()=>`${userTop()}
+  <div class="eyebrow">Today</div><div class="h1" style="margin:4px 0 14px">Your work</div>
+  <div class="event-hero hotspot">
+    <div class="between"><div><div class="eyebrow">Assigned Event</div><div class="h2" style="margin-top:5px">Feldman Wedding</div></div><span class="status live"><i class="live-dot"></i>Active now</span></div>
+    <div class="meta" style="margin-top:9px">Millsboro, DE · 12:30 PM</div>
+  </div>
+  <div class="card" style="margin-top:12px">
+    <div class="between"><div><div class="eyebrow">Travel started</div><div class="h2" style="margin-top:4px">Mileage + toll tracking</div></div><div class="icon green">${icon('route')}</div></div>
+    <div class="meta" style="margin-top:7px">Planned route is already known. GPS fills in actual travel as it happens.</div>
+  </div>`
+},
+{
+ segment:'Employee',
+ title:'A receipt should take seconds.',
+ body:'Greg taps Scan receipt. Sterling reads the vendor, total, date and category instead of making him type a form.',
+ why:'<strong>OCR-first:</strong> manual entry is the fallback, not the normal workflow.',
+ tabs:true,
+ render:()=>`${userTop()}
+  <div class="event-hero">
+    <div class="eyebrow">Active Event</div><div class="h2" style="margin-top:5px">Feldman Wedding</div>
+    <div class="meta" style="margin-top:6px">New receipts attach here automatically</div>
+  </div>
+  <button class="btn primary full hotspot" style="margin-top:12px;padding:18px">${icon('camera')} <span style="margin-left:8px">Scan receipt</span></button>
+  <div class="card" style="margin-top:12px">
+    <div class="row"><div class="icon teal">${icon('receipt')}</div><div><strong style="font-size:14px">No receipt form first</strong><div class="meta" style="margin-top:3px">Camera → analysis → quick confirmation</div></div></div>
+  </div>`
+},
+{
+ segment:'Employee',
+ title:'Sterling extracts the financial truth.',
+ body:'The scan is analyzed. Greg only confirms what Sterling found and fixes anything that is wrong.',
+ why:'<strong>No silent guessing:</strong> if vendor or amount is uncertain, Sterling asks instead of inventing financial truth.',
+ tabs:false,
+ render:()=>`${userTop()}
+  <div class="eyebrow">Receipt analysis</div><div class="h1" style="font-size:23px;margin:4px 0 14px">Shell · $71.80</div>
+  <div class="scan"></div>
+  <div class="fieldset" style="margin-top:12px">
+    <div class="field"><span>Vendor</span><strong>Shell</strong></div>
+    <div class="field"><span>Total</span><strong>$71.80</strong></div>
+    <div class="field"><span>Category</span><strong>Gas</strong></div>
+    <div class="field"><span>Receipt date</span><strong>Aug 27, 2026</strong></div>
+    <div class="field"><span>Event</span><strong>Feldman Wedding</strong></div>
+  </div>
+  <button class="btn primary full hotspot" style="margin-top:12px">Confirm & save</button>`
+},
+{
+ segment:'Employee',
+ title:'Everything lands in one Event activity.',
+ body:'Receipts sit beside automatic mileage and planned tolls. Jill can already see this activity live — submission is not the visibility gate.',
+ why:'<strong>One story:</strong> Event + employee + travel + receipts stay together.',
+ tabs:true,
+ render:()=>`${userTop()}
+  <div class="between"><div><div class="eyebrow">Feldman Wedding</div><div class="h1" style="font-size:23px;margin-top:4px">Event activity</div></div><span class="status live"><i class="live-dot"></i>Active now</span></div>
+  <div class="kpi-grid" style="margin:14px 0">
+    <div class="kpi"><span>Receipts</span><strong>$71.80</strong></div>
+    <div class="kpi"><span>Mileage</span><strong>$51.40</strong></div>
+    <div class="kpi"><span>Tolls</span><strong>$15.09</strong></div>
+  </div>
+  <div class="activity-list">
+    <div class="activity"><div class="icon teal">${icon('receipt')}</div><div class="mid"><div class="top"><strong>Shell</strong><b>$71.80</b></div><div class="meta">Gas · 10:30 AM</div></div></div>
+    <div class="activity"><div class="icon green">${icon('route')}</div><div class="mid"><div class="top"><strong>Mileage</strong><b>$51.40</b></div><div class="meta">70.9 planned miles · tracking live</div></div></div>
+    <div class="activity"><div class="icon amber">${icon('toll')}</div><div class="mid"><div class="top"><strong>Planned tolls</strong><b>$15.09</b></div><div class="meta">Evidence not attached yet</div></div></div>
+  </div>
+  <button class="btn dark full hotspot" style="margin-top:14px">Finish Event</button>`
+},
+{
+ segment:'Employee',
+ title:'Review once, at the end of the Event.',
+ body:'Sterling states the real issue directly. Greg can submit a soft issue only after acknowledging exactly what Jill will see.',
+ why:'<strong>No mystery warnings:</strong> “E‑ZPass evidence is missing” is useful. “1 issue” is not.',
+ tabs:false,
+ render:()=>`${userTop()}
+  <div class="eyebrow">Review Event</div><div class="between" style="margin:4px 0 14px"><div class="h1" style="font-size:23px">Feldman Wedding</div><div class="amount" style="font-size:24px">$138.29</div></div>
+  <div class="card">
+    <div class="review-line"><span>Receipts</span><strong>$71.80</strong></div>
+    <div class="review-line"><span>Mileage</span><strong>$51.40</strong></div>
+    <div class="review-line"><span>Planned tolls</span><strong>$15.09</strong></div>
+  </div>
+  <div class="issue hotspot" style="margin-top:12px">
+    <div class="issue-title">${icon('alert')} E‑ZPass evidence is missing</div>
+    <p>You can submit this Event anyway. Jill will see this same unresolved issue.</p>
+  </div>
+  <button class="btn amber full" style="margin-top:12px">Acknowledge & submit Event</button>`
+},
+{
+ segment:'Controller',
+ title:'Today is Jill’s live command center.',
+ body:'Assigned employees are READY. Employees actually working are ACTIVE NOW in green, with live expense and travel activity underneath.',
+ why:'<strong>Immediate visibility:</strong> Jill does not wait for submission or month-end to discover what happened.',
+ tabs:false,
+ render:()=>`${controllerTop('Today')}
+  <div class="between"><div><div class="eyebrow">Today</div><div class="h1" style="font-size:24px;margin-top:4px">Live Event activity</div></div><div class="meta">Aug 27</div></div>
+  <div class="stack" style="margin-top:14px">
+    <div class="person-row active hotspot">
+      <div class="between"><div><strong>Greg · Waitstaff</strong><div class="meta" style="margin-top:3px">Feldman Wedding</div></div><span class="status live"><i class="live-dot"></i>Active now</span></div>
+      <div class="meta" style="margin-top:9px">1 receipt · $71.80 · mileage tracking live</div>
+    </div>
+    <div class="person-row">
+      <div class="between"><div><strong>Maya · Kitchen</strong><div class="meta" style="margin-top:3px">Feldman Wedding</div></div><span class="status" style="background:#eef1f4;color:#6b7280">Ready</span></div>
+    </div>
+  </div>`
+},
+{
+ segment:'Controller',
+ title:'Jill creates the work context once.',
+ body:'Events carry the date, working window, location and employee assignments. Employees see what Sterling assigned; they do not create their own Event structure.',
+ why:'<strong>Operational control:</strong> assignment is access to the Event; activation means the employee is actually working it.',
+ tabs:false,
+ render:()=>`${controllerTop('Events')}
+  <div class="between"><div><div class="eyebrow">Events</div><div class="h1" style="font-size:23px;margin-top:4px">Feldman Wedding</div></div><span class="status live">Active Event</span></div>
+  <div class="form-grid" style="margin-top:14px">
+    <div class="form-field wide"><span>Location</span><strong>32369 Long Neck Rd · Millsboro, DE</strong></div>
+    <div class="form-field"><span>Start</span><strong>12:30 PM</strong></div>
+    <div class="form-field"><span>End</span><strong>5:30 PM</strong></div>
+  </div>
+  <div class="eyebrow" style="margin:16px 0 8px">Assigned employees</div>
+  <div class="stack">
+    <div class="assignment"><div><strong style="font-size:13px">Greg</strong><div class="meta">greg@demo.local</div></div><span class="role-chip">Waitstaff</span></div>
+    <div class="assignment"><div><strong style="font-size:13px">Maya</strong><div class="meta">maya@demo.local</div></div><span class="role-chip">Kitchen</span></div>
+  </div>`
+},
+{
+ segment:'Controller',
+ title:'People stay simple and operational.',
+ body:'Jill can add or edit a person, include the job role used throughout the app, reset credentials, and deactivate access without deleting history.',
+ why:'<strong>Roster integrity:</strong> prior Events and expenses remain attached even when someone is no longer active.',
+ tabs:false,
+ render:()=>`${controllerTop('People')}
+  <div class="eyebrow">People</div><div class="h1" style="font-size:23px;margin:4px 0 14px">Greg · Waitstaff</div>
+  <div class="card hotspot">
+    <div class="review-line"><span>Name</span><strong>Greg</strong></div>
+    <div class="review-line"><span>Job role</span><strong>Waitstaff</strong></div>
+    <div class="review-line"><span>Email</span><strong>greg@demo.local</strong></div>
+    <div class="review-line"><span>Username</span><strong>Greg</strong></div>
+    <div class="review-line"><span>Access</span><strong style="color:var(--green)">Active</strong></div>
+  </div>
+  <button class="btn dark full" style="margin-top:12px">Edit person</button>`
+},
+{
+ segment:'Controller',
+ title:'Review states the exact problem.',
+ body:'After Greg submits, Jill sees the complete Event and the same unresolved toll issue. She can compare planned truth with actual evidence.',
+ why:'<strong>Shared truth:</strong> employee and controller are looking at the same issue, not two different interpretations.',
+ tabs:false,
+ render:()=>`${controllerTop('Review')}
+  <div class="eyebrow">Event review</div><div class="between" style="margin:4px 0 14px"><div><div class="h1" style="font-size:23px">Feldman Wedding</div><div class="meta" style="margin-top:4px">Greg · Waitstaff</div></div><div style="text-align:right"><div class="meta">Claimed</div><strong style="font-size:22px">$138.29</strong></div></div>
+  <div class="issue hotspot">
+    <div class="issue-title">${icon('alert')} E‑ZPass evidence is missing</div>
+    <p>Planned tolls are $15.09. Attached evidence shows $16.00.</p>
+  </div>
+  <div class="card" style="margin-top:12px">
+    <div class="review-line"><span>Planned tolls</span><strong>$15.09</strong></div>
+    <div class="review-line"><span>E‑ZPass evidence</span><strong>$16.00</strong></div>
+    <div class="review-line"><span>Difference</span><strong>+$0.91</strong></div>
+  </div>`
+},
+{
+ segment:'Controller',
+ title:'Corrections preserve the original claim.',
+ body:'Jill approves $16.00 and records why. Greg’s original amount is never rewritten or erased.',
+ why:'<strong>Auditability:</strong> original truth, approved truth, who changed it, when, and why all remain visible.',
+ tabs:false,
+ render:()=>`${controllerTop('Review')}
+  <div class="eyebrow">Resolve issue</div><div class="h1" style="font-size:23px;margin:4px 0 14px">Toll difference</div>
+  <div class="success hotspot">
+    <div class="issue-title" style="color:#176f42">${icon('check')} Issue resolved</div>
+    <p style="color:#176f42">Approved toll amount updated to $16.00 from attached E‑ZPass evidence.</p>
+  </div>
+  <div class="audit">
+    <strong style="color:var(--ink)">Audit history</strong><br>
+    Jill · 9:18 AM · approved toll $15.09 → $16.00<br>
+    Reason: E‑ZPass statement confirms actual toll.
+  </div>
+  <button class="btn primary full hotspot" style="margin-top:14px">Approve Event</button>`
+},
+{
+ segment:'Controller',
+ title:'Approval closes the Event cleanly.',
+ body:'Receipts, mileage, toll evidence, approved values and reasons remain together. No month-end reconstruction from paper, texts and memory.',
+ why:'<strong>The controller payoff:</strong> timely, organized, accurate, transparent, surprise-free expenses.',
+ tabs:false,
+ render:()=>`${controllerTop('Review')}
+  <div class="end-state">
+    <div>
+      <div class="mark">${icon('shield')}</div>
+      <div class="h1" style="font-size:25px">Event approved</div>
+      <div class="meta" style="font-size:13px;line-height:1.55;margin-top:8px">The Event is complete and auditable. Month-end reporting is now aggregation, not cleanup.</div>
+      <div class="card" style="margin-top:18px;text-align:left">
+        <div class="between"><span class="meta">Approved Event total</span><strong>$139.20</strong></div>
+        <div class="between" style="margin-top:9px"><span class="meta">Unresolved issues</span><strong style="color:var(--green)">0</strong></div>
+        <div class="between" style="margin-top:9px"><span class="meta">Audit trail</span><strong style="font-size:12px">Complete</strong></div>
+      </div>
+    </div>
+  </div>`
+},
+{
+ segment:'Controller',
+ title:'Payment proof finishes the reimbursement story.',
+ body:'When Sterling pays Greg, Jill can attach the QuickBooks check stub as proof of payment. It is evidence of payment — not another expense.',
+ why:'<strong>Nothing gets lost:</strong> the Event expense truth and the eventual reimbursement proof remain connected without mixing their meaning.',
+ tabs:false,
+ render:()=>`${controllerTop('Review')}
+  <div class="eyebrow">Payment proof</div><div class="h1" style="font-size:23px;margin:4px 0 14px">QuickBooks check stub</div>
+  <div class="payment hotspot">
+    <div class="line"><span class="meta">Payee</span><strong>Greg</strong></div>
+    <div class="line"><span class="meta">Check #</span><strong>8</strong></div>
+    <div class="line"><span class="meta">Amount</span><strong>$139.20</strong></div>
+    <div class="line"><span class="meta">Status</span><strong style="color:var(--green)">Paid</strong></div>
+  </div>
+  <div class="success" style="margin-top:12px">
+    <div class="issue-title" style="color:#176f42">${icon('check')} Expense trail complete</div>
+    <p style="color:#176f42">Work → capture → review → approval → payment proof.</p>
+  </div>`
+}
+]
+
+let index=0;
+const screen=document.getElementById('screen');
+const tabs=document.getElementById('tabs');
+const title=document.getElementById('guideTitle');
+const body=document.getElementById('guideBody');
+const why=document.getElementById('guideWhy');
+const count=document.getElementById('stepCount');
+const stage=document.getElementById('stage');
+const stageText=document.getElementById('stageText');
+const back=document.getElementById('back');
+const next=document.getElementById('next');
+const track=document.getElementById('track');
+
+function render(){
+  const s=steps[index];
+  screen.innerHTML=s.render();
+  screen.scrollTop=0;
+  tabs.innerHTML=s.tabs?employeeTabs(index===3?'Activity':'Today'):'';
+  stageText.textContent=s.segment;
+  stage.className='stage '+(s.segment==='Controller'?'controller':'');
+  title.textContent=s.title;
+  body.textContent=s.body;
+  why.innerHTML=s.why;
+  count.textContent=`${index+1} of ${steps.length}`;
+  back.disabled=index===0;
+  next.textContent=index===steps.length-1?'Replay':'Next';
+  track.innerHTML=steps.map((_,i)=>`<span class="${i<index?'done':i===index?'current':''}"></span>`).join('');
+}
+function goNext(){index=index<steps.length-1?index+1:0;render()}
+function goBack(){if(index>0){index--;render()}}
+next.addEventListener('click',goNext);
+back.addEventListener('click',goBack);
+document.getElementById('restart').addEventListener('click',()=>{index=0;render()});
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight'||e.key==='Enter')goNext();
+  if(e.key==='ArrowLeft')goBack();
+});
+render();
+</script>
+</body>
+</html>
