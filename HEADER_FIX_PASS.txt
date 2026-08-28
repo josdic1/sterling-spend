@@ -1,8 +1,0 @@
-STERLING SPEND — EMPLOYEE HEADER FIX
-
-- Removes the redundant employee header Review button.
-- Review remains available through the existing current record/month card for now; Event-centric review is a separate upcoming pass.
-- Sign out becomes a quiet text control rather than a competing pill/card button.
-- Admin remains available only for admin users.
-- No backend changes.
-- No database migration.

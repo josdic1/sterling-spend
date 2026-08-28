@@ -4,6 +4,7 @@ import {
   getAdminTodayDetail,
   type AdminTodayDetail as AdminTodayDetailData,
 } from "../lib/api";
+import { personDisplayName } from "../lib/demo-display";
 import "./AdminTodayDetail.css";
 
 type Props = {
@@ -75,7 +76,7 @@ export default function AdminTodayDetail({
           <header className="admin-today-person">
             <div>
               <span>EMPLOYEE</span>
-              <h2>{detail.employee.name}</h2>
+              <h2>{personDisplayName({ name: detail.employee.name, email: detail.employee.email })}</h2>
               <p>{detail.employee.email}</p>
             </div>
             <div className="admin-today-statuses">

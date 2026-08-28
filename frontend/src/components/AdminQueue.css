@@ -448,3 +448,182 @@
   font-size: var(--text-xs);
   font-weight: 800;
 }
+
+/* Explicit controller presentation mode.
+   On a narrow device, Web intentionally renders the desktop controller canvas
+   instead of allowing viewport media queries to silently collapse it back to Mobile. */
+@media (max-width: 759px) {
+  .admin-queue-web {
+    width: 920px;
+    min-width: 920px;
+    max-width: none;
+    margin: 0;
+    padding: 28px 32px 48px;
+  }
+
+  .admin-queue-web .admin-live-row {
+    grid-template-columns: minmax(160px, 1fr) minmax(250px, 1.35fr) auto;
+    align-items: center;
+  }
+
+  .admin-queue-web .admin-live-status-grid {
+    grid-column: auto;
+    grid-template-columns: minmax(0, 1fr) minmax(0, .8fr);
+  }
+
+  .admin-queue-web .admin-live-chevron {
+    grid-column: auto;
+    grid-row: auto;
+  }
+
+  .admin-queue-web .admin-events-toolbar {
+    align-items: center;
+    flex-direction: row;
+  }
+
+  .admin-queue-web .admin-event-card {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .admin-queue-web .admin-event-edit {
+    justify-self: auto;
+  }
+
+  .admin-queue-web .admin-event-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-queue-web .admin-event-address {
+    grid-column: 1 / -1;
+  }
+
+  .admin-queue-web .admin-events-toolbar button,
+  .admin-queue-web .admin-event-save {
+    width: auto;
+  }
+
+  .admin-queue-web .admin-event-location-field {
+    grid-column: span 2;
+  }
+
+  .admin-queue-web .admin-event-manual-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .admin-queue-web .admin-people-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-queue-web .admin-people-fields button {
+    width: auto;
+    justify-self: start;
+  }
+
+  .admin-queue-web .admin-people-list-heading,
+  .admin-queue-web .admin-person-row,
+  .admin-queue-web .admin-person-main {
+    align-items: center;
+    flex-direction: row;
+  }
+
+  .admin-queue-web .admin-person-row > button {
+    width: auto;
+  }
+
+  .admin-queue-web .admin-person-actions,
+  .admin-queue-web .admin-person-edit-actions {
+    width: auto;
+  }
+
+  .admin-queue-web .admin-person-actions button,
+  .admin-queue-web .admin-person-edit-actions button {
+    flex: 0 0 auto;
+  }
+
+  .admin-queue-web .admin-person-edit-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-queue-web .admin-person-edit-actions {
+    grid-column: 1 / -1;
+  }
+
+  .admin-queue-web .admin-today-person {
+    display: flex;
+  }
+
+  .admin-queue-web .admin-today-statuses {
+    justify-content: flex-end;
+  }
+
+  .admin-queue-web .admin-today-summary {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.admin-queue-header-actions { display: flex; align-items: center; gap: 8px; }
+
+@media (max-width: 759px) {
+  .admin-queue-mobile {
+    width: 100%; max-width: none; min-height: 100dvh; margin: 0;
+    padding: 0 14px calc(82px + env(safe-area-inset-bottom)); overflow-x: clip;
+  }
+  .admin-queue-mobile .admin-queue-header {
+    position: sticky; top: 0; z-index: 40; align-items: center;
+    margin: 0 -14px 10px; padding: 12px 14px 10px;
+    border-bottom: 1px solid color-mix(in srgb, var(--color-line) 82%, transparent);
+    background: color-mix(in srgb, var(--color-page) 94%, transparent);
+    -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
+  }
+  .admin-queue-mobile .admin-queue-header h1 { font-size: 24px; letter-spacing: -0.04em; }
+  .admin-queue-mobile .admin-queue-header > div:first-child > span { font-size: 9px; letter-spacing: .09em; }
+  .admin-queue-mobile .admin-queue-close {
+    width: 34px; height: 34px; flex-basis: 34px; border: 1px solid var(--color-line); box-shadow: none;
+  }
+  .admin-queue-mobile .admin-view-toggle {
+    width: fit-content; margin: 0 0 12px; padding: 3px;
+    border: 1px solid var(--color-line); background: var(--color-card);
+  }
+  .admin-queue-mobile .admin-view-toggle button { min-height: 32px; padding: 0 10px; border-radius: 8px; font-size: 11px; }
+  .admin-queue-mobile .admin-view-toggle button.active { background: var(--color-ink); color: var(--color-card); box-shadow: none; }
+  .admin-queue-mobile .admin-queue-sections {
+    position: fixed; right: 0; bottom: 0; left: 0; z-index: 60;
+    display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 2px;
+    margin: 0; padding: 6px 6px calc(6px + env(safe-area-inset-bottom)); overflow: visible;
+    border-top: 1px solid var(--color-line); border-bottom: 0;
+    background: color-mix(in srgb, var(--color-card) 96%, transparent);
+    box-shadow: 0 -8px 28px rgba(20, 30, 60, .07);
+    -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
+  }
+  .admin-queue-mobile .admin-queue-sections button {
+    position: relative; min-width: 0; min-height: 50px; flex-direction: column; justify-content: center;
+    gap: 1px; padding: 4px 2px; border: 0; border-radius: 10px;
+    color: var(--color-subtle); font-size: 9.5px; line-height: 1.05; white-space: normal; text-align: center;
+  }
+  .admin-queue-mobile .admin-queue-sections button.active { border: 0; background: var(--color-blue-soft); color: var(--color-primary-strong); }
+  .admin-queue-mobile .admin-queue-sections button > span { min-width: 16px; height: 16px; padding: 0 4px; font-size: 9px; }
+  .admin-queue-mobile .admin-live-list, .admin-queue-mobile .admin-queue-cards { gap: 8px; padding-top: 0; }
+  .admin-queue-mobile .admin-live-row, .admin-queue-mobile .admin-queue-card, .admin-queue-mobile .admin-queue-message {
+    border: 1px solid var(--color-line); border-radius: 14px; box-shadow: none;
+  }
+  .admin-queue-mobile .admin-live-row { grid-template-columns: minmax(0, 1fr) auto; gap: 10px 12px; padding: 13px 14px; }
+  .admin-queue-mobile .admin-live-person { gap: 2px; }
+  .admin-queue-mobile .admin-live-person strong { font-size: 14px; }
+  .admin-queue-mobile .admin-live-status-grid {
+    grid-column: 1 / -1; grid-template-columns: minmax(0, 1.4fr) minmax(90px, .6fr); gap: 12px;
+    padding-top: 9px; border-top: 1px solid var(--color-line);
+  }
+  .admin-queue-mobile .admin-live-status-label { font-size: 9px !important; }
+  .admin-queue-mobile .admin-live-row.active {
+    border-color: color-mix(in srgb, var(--color-primary) 62%, var(--color-line));
+    background: color-mix(in srgb, var(--color-primary) 8%, var(--color-card));
+  }
+  .admin-queue-mobile .admin-queue-card { padding: 14px; }
+  .admin-queue-mobile .admin-queue-card-stats { gap: 8px; margin-top: 12px; }
+  .admin-queue-mobile .admin-queue-card-footer { margin-top: 12px; padding-top: 10px; }
+  .admin-queue-mobile .admin-queue-message { padding: 32px 18px; }
+
+  /* Web mode on a phone stays desktop-like without making the entire page 920px wide. */
+  .admin-queue-web { width: 100%; min-width: 0; max-width: none; margin: 0; padding: 16px; overflow-x: hidden; }
+  .admin-queue-web .admin-queue-table-card { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+}

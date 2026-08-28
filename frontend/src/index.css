@@ -734,3 +734,20 @@ button:disabled {
   align-items: center;
   gap: 8px;
 }
+
+/* Stable mobile shell */
+@media (max-width: 759px) {
+  html, body, #root { width: 100%; max-width: 100%; overflow-x: hidden; }
+  body { overscroll-behavior-y: none; }
+  button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
+  button, a { touch-action: manipulation; }
+  .employee-app { width: 100%; max-width: none; min-height: 100dvh; box-shadow: none; }
+  .employee-topbar {
+    position: sticky; top: 0; z-index: 30;
+    padding: 12px 16px 9px;
+    border-bottom: 1px solid color-mix(in srgb, var(--color-line) 78%, transparent);
+    background: color-mix(in srgb, var(--color-page) 94%, transparent);
+    -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
+  }
+  .employee-page { padding: 14px 14px calc(34px + env(safe-area-inset-bottom)); }
+}

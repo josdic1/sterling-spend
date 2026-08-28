@@ -1,8 +1,0 @@
-Sterling Spend receipt fallback pass
-
-- Active Event receipt date is automatic/hidden when OCR date is absent or matches capture date.
-- An explicitly different OCR receipt date is surfaced for confirmation.
-- Missing vendor becomes editable instead of displaying a dead “Couldn’t read”.
-- Employee may explicitly request nearby vendor suggestions using device location.
-- Suggestions come from Google Places and never auto-save; employee must choose one.
-- No schema migration.

@@ -518,3 +518,22 @@
     grid-template-columns: 1fr;
   }
 }
+
+@media (max-width: 520px) {
+  .reimbursement-review { min-height: 100dvh; padding: 14px 14px 30px; }
+  .reimbursement-review-header {
+    position: sticky; top: 0; z-index: 30; align-items: center;
+    margin: -14px -14px 12px; padding: 10px 14px;
+    border-bottom: 1px solid var(--color-line);
+    background: color-mix(in srgb, var(--color-page) 94%, transparent);
+    -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
+  }
+  .reimbursement-review-header h1 { font-size: 22px; }
+  .reimbursement-review-close { width: 34px; height: 34px; box-shadow: none; border: 1px solid var(--color-line); }
+  .reimbursement-review-total { margin-bottom: 10px; padding: 14px; border: 1px solid var(--color-line); border-radius: 14px; box-shadow: none; }
+  .reimbursement-review-total > strong { font-size: 26px; }
+  .reimbursement-review-counts { gap: 8px; margin-bottom: 14px; }
+  .reimbursement-review-counts > div { gap: 8px; padding: 11px; border: 1px solid var(--color-line); border-radius: 12px; box-shadow: none; }
+  .reimbursement-review-list { margin-bottom: 14px; }
+  .reimbursement-review-row { padding: 12px; }
+}

@@ -147,3 +147,22 @@
   .admin-event-location-field { grid-column: 1 / -1; }
   .admin-event-manual-grid { grid-template-columns: 1fr; }
 }
+
+@media (max-width: 680px) {
+  .admin-events { gap: 12px; }
+  .admin-events-toolbar { align-items: center; flex-direction: row; }
+  .admin-events-toolbar button {
+    width: auto; flex: 0 0 auto; min-height: 38px; padding: 0 11px;
+    box-shadow: none; border: 1px solid var(--color-line);
+  }
+  .admin-events-list { gap: 8px; }
+  .admin-event-card { grid-template-columns: minmax(0, 1fr) auto; gap: 5px; padding: 6px; border-radius: 14px; }
+  .admin-event-open { gap: 10px; padding: 9px; }
+  .admin-event-card-main { gap: 3px; }
+  .admin-event-card h2 { font-size: 16px; }
+  .admin-event-card p, .admin-event-card small { font-size: 11px; }
+  .admin-event-edit { width: auto; justify-self: auto; align-self: center; min-height: 34px; padding: 0 9px; }
+  .admin-event-form { gap: 14px; padding: 14px; border: 1px solid var(--color-line); border-radius: 14px; box-shadow: none; }
+  .admin-event-fields { grid-template-columns: 1fr; gap: 10px; }
+  .admin-event-save { width: 100%; }
+}

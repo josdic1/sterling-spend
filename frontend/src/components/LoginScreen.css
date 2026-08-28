@@ -135,3 +135,12 @@
   background: color-mix(in srgb, var(--color-primary) 7%, transparent);
 }
 
+
+.dev-login-buttons button { box-shadow: none; }
+@media (max-width: 520px) {
+  .login-screen { padding: 16px; }
+  .login-shell { gap: 18px; }
+  .dev-login-buttons { gap: 6px; padding-inline: 0; }
+  .dev-login-buttons button { min-height: 34px; padding: 5px 10px; }
+  .dev-login-name { font-size: 11px; }
+}

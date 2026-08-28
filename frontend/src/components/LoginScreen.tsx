@@ -3,6 +3,7 @@ import { LogIn } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth";
 import ThemeToggle from "./ThemeToggle";
+import { personDisplayName } from "../lib/demo-display";
 import "./LoginScreen.css";
 
 export default function LoginScreen() {
@@ -188,10 +189,12 @@ export default function LoginScreen() {
                 disabled={submitting}
                 onClick={() => void handleDevLogin(devUser.username)}
               >
-                <span className="dev-login-name">{devUser.username}</span>
-                <span className="dev-login-role">
-                  {devUser.role === "admin" ? "Admin" : "Employee"}
-                </span>
+                <span className="dev-login-name">{personDisplayName({ username: devUser.username, role: devUser.role })}</span>
+                {!personDisplayName({ username: devUser.username, role: devUser.role }).includes(" · ") && (
+                  <span className="dev-login-role">
+                    {devUser.role === "admin" ? "Admin" : "Employee"}
+                  </span>
+                )}
               </button>
             ))}
           </div>

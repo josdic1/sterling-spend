@@ -1,7 +1,0 @@
-Sterling Spend authentication + identity pass
-- Real username/password login
-- Jill seeded as username Jill / password admin
-- Cookie-backed DB sessions
-- Frontend uses authenticated user IDs; no TEST_EMPLOYEE_ID / TEST_ADMIN_ID
-- Admin People creates employees with username + temporary password
-- Deactivated users cannot authenticate through /api/auth/me

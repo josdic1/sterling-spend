@@ -19,6 +19,7 @@ import {
   type AdminActivationStatus,
   type AdminReimbursementQueueItem,
 } from "../lib/api";
+import { personDisplayName } from "../lib/demo-display";
 import "./AdminQueue.css";
 
 type AdminQueueProps = {
@@ -155,6 +156,12 @@ export default function AdminQueue({
       (event) => String(event.event_date).slice(0, 10) === todayKey,
     ),
   );
+
+  useEffect(() => {
+    if (viewMode === "mobile") {
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    }
+  }, [section, selectedTodayUserId, viewMode]);
 
   const sectionTitle =
     section === "today"
@@ -315,7 +322,7 @@ export default function AdminQueue({
                 onClick={() => setSelectedTodayUserId(item.user_id)}
               >
                 <div className="admin-live-person">
-                  <strong>{item.employee_name}</strong>
+                  <strong>{personDisplayName({ name: item.employee_name, email: item.employee_email })}</strong>
                   <span>{item.employee_email}</span>
                 </div>
 
@@ -404,7 +411,7 @@ export default function AdminQueue({
                     {formatMonth(item.year, item.month)}
                   </span>
 
-                  <h2>{item.employee_name}</h2>
+                  <h2>{personDisplayName({ name: item.employee_name, email: item.employee_email })}</h2>
                 </div>
 
                 <span
@@ -486,7 +493,7 @@ export default function AdminQueue({
               {items.map((item) => (
                 <tr key={item.id}>
                   <td>
-                    <strong>{item.employee_name}</strong>
+                    <strong>{personDisplayName({ name: item.employee_name, email: item.employee_email })}</strong>
                     <span>{item.employee_email}</span>
                   </td>
 
@@ -534,7 +541,7 @@ export default function AdminQueue({
                       onClick={() =>
                         onOpenReimbursement(item.id)
                       }
-                      aria-label={`Open ${item.employee_name}`}
+                      aria-label={`Open ${personDisplayName({ name: item.employee_name, email: item.employee_email })}`}
                     >
                       <ChevronRight size={18} />
                     </button>

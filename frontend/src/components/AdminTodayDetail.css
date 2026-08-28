@@ -237,3 +237,20 @@
     grid-template-columns: 1fr;
   }
 }
+
+@media (max-width: 600px) {
+  .admin-today-detail { gap: 12px; padding-bottom: 4px; }
+  .admin-today-back { min-height: 34px; padding: 0 4px; }
+  .admin-today-person { gap: 10px; padding: 13px 14px; border-radius: 14px; }
+  .admin-today-person h2 { font-size: 20px; }
+  .admin-today-statuses { gap: 5px; }
+  .admin-today-status { min-height: 24px; padding: 0 7px; font-size: 10px !important; }
+  .admin-today-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
+  .admin-today-summary > div { gap: 3px; padding: 10px; border-radius: 12px; }
+  .admin-today-summary span { font-size: 10px; }
+  .admin-today-summary strong { font-size: 15px; }
+  .admin-today-assignment, .admin-today-row, .admin-today-travel, .admin-today-issue, .admin-today-empty, .admin-today-message {
+    padding: 11px 12px; border-radius: 12px;
+  }
+  .admin-today-section { gap: 7px; }
+}

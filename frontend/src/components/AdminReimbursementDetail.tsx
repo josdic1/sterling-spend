@@ -28,6 +28,7 @@ import {
   type AdminReimbursementDetail as AdminReimbursementDetailData,
   type ReimbursementAttachment,
 } from "../lib/api";
+import { personDisplayName } from "../lib/demo-display";
 import "./AdminReimbursementDetail.css";
 
 type AdminReimbursementDetailProps = {
@@ -530,7 +531,7 @@ export default function AdminReimbursementDetail({
 
         <div className="admin-detail-title">
           <span>CONTROLLER REVIEW</span>
-          <h1>{detail.employee_name}</h1>
+          <h1>{personDisplayName({ name: detail.employee_name, email: detail.employee_email })}</h1>
           <p>
             {formatMonth(detail.year, detail.month)}
             {" · "}

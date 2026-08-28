@@ -819,3 +819,24 @@
 .admin-detail-known-issue.unresolved {
   background: var(--color-orange-soft);
 }
+
+@media (max-width: 759px) {
+  .admin-detail { width: 100%; max-width: none; min-height: 100dvh; margin: 0; padding: 14px 14px 34px; overflow-x: hidden; }
+  .admin-detail-header {
+    position: sticky; top: 0; z-index: 40; grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center; gap: 9px; margin: -14px -14px 12px; padding: 10px 14px;
+    border-bottom: 1px solid var(--color-line);
+    background: color-mix(in srgb, var(--color-page) 94%, transparent);
+    -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
+  }
+  .admin-detail-back { grid-column: auto; min-height: 34px; padding: 0 8px; box-shadow: none; border: 1px solid var(--color-line); }
+  .admin-detail-title h1 { margin-top: 2px; font-size: 20px; }
+  .admin-detail-title p { margin-top: 2px; font-size: 10.5px; }
+  .admin-detail-summary { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-bottom: 14px; }
+  .admin-detail-summary > div { gap: 2px; padding: 9px; border: 1px solid var(--color-line); border-radius: 11px; box-shadow: none; }
+  .admin-detail-summary span { font-size: 9px; }
+  .admin-detail-summary strong { font-size: 14px; }
+  .admin-detail-section { margin-bottom: 14px; }
+  .admin-detail-list, .admin-adjustment-history, .admin-payment { box-shadow: none; border: 1px solid var(--color-line); }
+  .admin-detail-row { gap: 9px; padding: 12px; }
+}

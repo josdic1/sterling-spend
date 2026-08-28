@@ -1,6 +1,0 @@
-Sterling Spend — Today READY/ACTIVE pass
-- Today shows only employees assigned to an Event today.
-- Assigned but not activated = READY.
-- Activated = ACTIVE with stronger Sterling accent treatment.
-- Unassigned employees remain in People, not Today.
-- No schema or workflow changes.

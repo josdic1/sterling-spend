@@ -7,6 +7,7 @@ import {
   updateAdminUser,
   type AdminUser,
 } from "../lib/api";
+import { personDisplayName } from "../lib/demo-display";
 import "./AdminPeople.css";
 
 type AdminPeopleProps = {
@@ -32,6 +33,7 @@ export default function AdminPeople({ adminUserId }: AdminPeopleProps) {
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<EditDraft | null>(null);
   const [error, setError] = useState("");
+  const [showAddForm, setShowAddForm] = useState(false);
 
   const loadUsers = useCallback(async () => {
     try {
@@ -88,6 +90,7 @@ export default function AdminPeople({ adminUserId }: AdminPeopleProps) {
       setEmail("");
       setUsername("");
       setPassword("");
+      setShowAddForm(false);
       await loadUsers();
     } catch (caughtError) {
       setError(
@@ -191,86 +194,44 @@ export default function AdminPeople({ adminUserId }: AdminPeopleProps) {
 
   return (
     <section className="admin-people">
-      <form
-        className="admin-people-add"
-        onSubmit={(event) => {
-          void handleAddEmployee(event);
-        }}
-      >
-        <div className="admin-people-add-heading">
-          <div className="admin-people-add-icon">
-            <UserPlus size={20} />
-          </div>
-
-          <div>
-            <h2>Add employee</h2>
-            <p>New employees are active immediately.</p>
-          </div>
-        </div>
-
-        <div className="admin-people-fields">
-          <label>
-            <span>Name</span>
-            <input
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              placeholder="Employee name"
-              autoComplete="name"
-            />
-          </label>
-
-          <label>
-            <span>Email</span>
-            <input
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder="employee@sterling.com"
-              autoComplete="email"
-            />
-          </label>
-
-          <label>
-            <span>Username</span>
-            <input
-              value={username}
-              onChange={(event) => setUsername(event.target.value)}
-              placeholder="Employee username"
-              autoComplete="off"
-            />
-          </label>
-
-          <label>
-            <span>Temporary password</span>
-            <input
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              placeholder="At least 4 characters"
-              autoComplete="new-password"
-            />
-          </label>
-
-          <button
-            type="submit"
-            disabled={saving || !name.trim() || !email.trim() || !username.trim() || password.length < 4}
-          >
-            {saving ? "Adding…" : "Add employee"}
-          </button>
-        </div>
-      </form>
-
-      <div className="admin-people-list-heading">
+      <div className="admin-people-toolbar">
         <div>
-          <h2>People</h2>
-          <p>
-            {activeCount} active
-            {inactiveCount > 0 ? ` · ${inactiveCount} inactive` : ""}
-          </p>
+          <strong>{activeCount} active{inactiveCount > 0 ? ` · ${inactiveCount} inactive` : ""}</strong>
+          <span>Employees</span>
         </div>
-
-        <span>Profile edits preserve history.</span>
+        {!showAddForm && (
+          <button type="button" onClick={() => setShowAddForm(true)}>
+            <UserPlus size={16} /> Add employee
+          </button>
+        )}
       </div>
+
+      {showAddForm && (
+        <form
+          className="admin-people-add"
+          onSubmit={(event) => { void handleAddEmployee(event); }}
+        >
+          <div className="admin-people-add-heading">
+            <div>
+              <h2>Add employee</h2>
+              <p>New employees are active immediately.</p>
+            </div>
+            <button type="button" className="admin-people-add-close" onClick={() => setShowAddForm(false)} aria-label="Close add employee">
+              <X size={18} />
+            </button>
+          </div>
+
+          <div className="admin-people-fields">
+            <label><span>Name</span><input value={name} onChange={(event) => setName(event.target.value)} placeholder="Employee name" autoComplete="name" /></label>
+            <label><span>Email</span><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="employee@sterling.com" autoComplete="email" /></label>
+            <label><span>Username</span><input value={username} onChange={(event) => setUsername(event.target.value)} placeholder="Employee username" autoComplete="off" /></label>
+            <label><span>Temporary password</span><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="At least 4 characters" autoComplete="new-password" /></label>
+            <button type="submit" disabled={saving || !name.trim() || !email.trim() || !username.trim() || password.length < 4}>
+              {saving ? "Adding…" : "Add employee"}
+            </button>
+          </div>
+        </form>
+      )}
 
       {error && (
         <div className="admin-people-error" role="alert">
@@ -357,7 +318,7 @@ export default function AdminPeople({ adminUserId }: AdminPeopleProps) {
                   <>
                     <div className="admin-person-main">
                       <div>
-                        <strong>{user.name}</strong>
+                        <strong>{personDisplayName(user)}</strong>
                         <span>{user.email}</span>
                         {user.username && <span>@{user.username}</span>}
                       </div>

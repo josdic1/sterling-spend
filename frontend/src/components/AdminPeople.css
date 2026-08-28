@@ -350,3 +350,43 @@
     grid-column: 1;
   }
 }
+
+.admin-people-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.admin-people-toolbar > div { display: grid; gap: 2px; }
+.admin-people-toolbar > div > strong { font-size: 14px; }
+.admin-people-toolbar > div > span { color: var(--color-subtle); font-size: 11px; }
+.admin-people-toolbar > button {
+  min-height: 38px; display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  padding: 0 12px; border: 1px solid var(--color-line); border-radius: 10px;
+  background: var(--color-card); color: var(--color-ink); font-weight: 800;
+}
+.admin-people-add-close {
+  width: 36px; height: 36px; margin-left: auto; display: grid; place-items: center;
+  border: 0; border-radius: 10px; background: var(--color-page); color: var(--color-subtle);
+}
+@media (max-width: 759px) {
+  .admin-people { gap: 12px; }
+  .admin-people-toolbar { min-height: 42px; }
+  .admin-people-add { gap: 14px; padding: 14px; border: 1px solid var(--color-line); border-radius: 14px; box-shadow: none; }
+  .admin-people-add-heading { justify-content: space-between; }
+  .admin-people-add-icon { display: none; }
+  .admin-people-fields { grid-template-columns: 1fr; gap: 10px; }
+  .admin-people-fields input { min-height: 42px; border-radius: 10px; }
+  .admin-people-fields button { min-width: 0; min-height: 44px; }
+  .admin-people-list-heading { display: none; }
+  .admin-people-list { gap: 8px; }
+  .admin-person-row {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center;
+    gap: 10px; padding: 12px 13px; border-radius: 14px;
+  }
+  .admin-person-main { min-width: 0; align-items: flex-start; flex-direction: column; gap: 7px; }
+  .admin-person-main strong { font-size: 14px; }
+  .admin-person-main > div:first-child span { font-size: 11px; }
+  .admin-person-badges { gap: 4px; }
+  .admin-person-status, .admin-person-role { padding: 3px 6px; font-size: 9px; }
+  .admin-person-actions { width: auto; align-self: center; flex-direction: column; gap: 5px; }
+  .admin-person-actions button { min-width: 72px; min-height: 34px; flex: 0 0 auto; padding: 0 9px; font-size: 10.5px; }
+  .admin-person-edit-grid { grid-column: 1 / -1; grid-template-columns: 1fr; gap: 10px; }
+  .admin-person-edit-actions { width: 100%; grid-column: 1; }
+  .admin-person-edit-actions button { flex: 1; }
+}

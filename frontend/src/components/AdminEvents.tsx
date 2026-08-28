@@ -13,6 +13,7 @@ import {
   type AdminUser,
 } from "../lib/api";
 import AdminEventDashboard from "./AdminEventDashboard";
+import { personDisplayName } from "../lib/demo-display";
 import "./AdminEvents.css";
 
 type Props = { adminUserId: string };
@@ -122,7 +123,7 @@ export default function AdminEvents({ adminUserId }: Props) {
   }, [adminUserId, formOpen, form.venue_address, form.venue_name, locationQuery, manualLocation]);
 
   const activeUsers = useMemo(() => users.filter((user) => user.is_active), [users]);
-  const names = useMemo(() => new Map(users.map((user) => [user.id, user.name])), [users]);
+  const names = useMemo(() => new Map(users.map((user) => [user.id, personDisplayName(user)])), [users]);
 
   function cancel() {
     setCreating(false);
@@ -294,7 +295,7 @@ export default function AdminEvents({ adminUserId }: Props) {
             {activeUsers.map((user) => (
               <label key={user.id}>
                 <input type="checkbox" checked={form.assigned_user_ids.includes(user.id)} onChange={() => toggleUser(user.id)} />
-                <span><strong>{user.name}</strong><small>{user.role === "admin" ? "Admin" : user.email}</small></span>
+                <span><strong>{personDisplayName(user)}</strong><small>{user.role === "admin" ? "Admin" : user.email}</small></span>
               </label>
             ))}
           </fieldset>
