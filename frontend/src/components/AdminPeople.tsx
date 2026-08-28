@@ -16,14 +16,30 @@ type AdminPeopleProps = {
 
 type EditDraft = {
   name: string;
+  jobRole: string;
   email: string;
   username: string;
   password: string;
 };
 
+function splitPersonName(value: string) {
+  const [namePart, ...roleParts] = value.split(" · ");
+  return {
+    name: namePart.trim(),
+    jobRole: roleParts.join(" · ").trim(),
+  };
+}
+
+function composePersonName(name: string, jobRole: string) {
+  const cleanName = name.trim();
+  const cleanRole = jobRole.trim();
+  return cleanRole ? `${cleanName} · ${cleanRole}` : cleanName;
+}
+
 export default function AdminPeople({ adminUserId }: AdminPeopleProps) {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [name, setName] = useState("");
+  const [jobRole, setJobRole] = useState("");
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -68,10 +84,11 @@ export default function AdminPeople({ adminUserId }: AdminPeopleProps) {
     event.preventDefault();
 
     const trimmedName = name.trim();
+    const trimmedJobRole = jobRole.trim();
     const trimmedEmail = email.trim();
     const trimmedUsername = username.trim();
 
-    if (!trimmedName || !trimmedEmail || !trimmedUsername || !password) {
+    if (!trimmedName || !trimmedJobRole || !trimmedEmail || !trimmedUsername || !password) {
       return;
     }
 
@@ -80,13 +97,14 @@ export default function AdminPeople({ adminUserId }: AdminPeopleProps) {
       setError("");
 
       await createAdminUser(adminUserId, {
-        name: trimmedName,
+        name: composePersonName(trimmedName, trimmedJobRole),
         email: trimmedEmail,
         username: trimmedUsername,
         password,
       });
 
       setName("");
+      setJobRole("");
       setEmail("");
       setUsername("");
       setPassword("");
@@ -139,9 +157,11 @@ export default function AdminPeople({ adminUserId }: AdminPeopleProps) {
   }
 
   function beginEdit(user: AdminUser) {
+    const parsedName = splitPersonName(personDisplayName(user));
     setEditingUserId(user.id);
     setEditDraft({
-      name: user.name,
+      name: parsedName.name,
+      jobRole: parsedName.jobRole,
       email: user.email,
       username: user.username ?? "",
       password: "",
@@ -158,6 +178,7 @@ export default function AdminPeople({ adminUserId }: AdminPeopleProps) {
     if (!editDraft) return;
 
     const trimmedName = editDraft.name.trim();
+    const trimmedJobRole = editDraft.jobRole.trim();
     const trimmedEmail = editDraft.email.trim();
     const trimmedUsername = editDraft.username.trim();
 
@@ -169,7 +190,7 @@ export default function AdminPeople({ adminUserId }: AdminPeopleProps) {
       setError("");
 
       const updated = await updateAdminUser(adminUserId, user.id, {
-        name: trimmedName,
+        name: composePersonName(trimmedName, trimmedJobRole),
         email: trimmedEmail,
         username: trimmedUsername,
         ...(editDraft.password ? { password: editDraft.password } : {}),
@@ -223,10 +244,11 @@ export default function AdminPeople({ adminUserId }: AdminPeopleProps) {
 
           <div className="admin-people-fields">
             <label><span>Name</span><input value={name} onChange={(event) => setName(event.target.value)} placeholder="Employee name" autoComplete="name" /></label>
+            <label><span>Role</span><input value={jobRole} onChange={(event) => setJobRole(event.target.value)} placeholder="Waitstaff, Kitchen, Manager…" autoComplete="off" /></label>
             <label><span>Email</span><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="employee@sterling.com" autoComplete="email" /></label>
             <label><span>Username</span><input value={username} onChange={(event) => setUsername(event.target.value)} placeholder="Employee username" autoComplete="off" /></label>
             <label><span>Temporary password</span><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="At least 4 characters" autoComplete="new-password" /></label>
-            <button type="submit" disabled={saving || !name.trim() || !email.trim() || !username.trim() || password.length < 4}>
+            <button type="submit" disabled={saving || !name.trim() || !jobRole.trim() || !email.trim() || !username.trim() || password.length < 4}>
               {saving ? "Adding…" : "Add employee"}
             </button>
           </div>
@@ -259,6 +281,14 @@ export default function AdminPeople({ adminUserId }: AdminPeopleProps) {
                       <input
                         value={editDraft.name}
                         onChange={(event) => setEditDraft({ ...editDraft, name: event.target.value })}
+                      />
+                    </label>
+                    <label>
+                      <span>Role</span>
+                      <input
+                        value={editDraft.jobRole}
+                        placeholder="Waitstaff, Kitchen, Manager…"
+                        onChange={(event) => setEditDraft({ ...editDraft, jobRole: event.target.value })}
                       />
                     </label>
                     <label>

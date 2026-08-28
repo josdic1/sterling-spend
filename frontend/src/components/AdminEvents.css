@@ -22,7 +22,8 @@
 .admin-event-form-heading button { border: 0; background: transparent; color: var(--color-subtle); font-weight: 800; }
 .admin-event-fields { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 12px; }
 .admin-event-fields label { min-width: 0; display: grid; gap: 6px; }
-.admin-event-fields input { width: 100%; min-height: 42px; padding: 0 11px; border: 1px solid var(--color-line); border-radius: 10px; background: var(--color-page); color: var(--color-ink); font: inherit; }
+.admin-event-fields input,
+.admin-event-fields select { width: 100%; min-height: 42px; padding: 0 11px; border: 1px solid var(--color-line); border-radius: 10px; background: var(--color-page); color: var(--color-ink); font: inherit; }
 .admin-event-address { grid-column: 1 / -1; }
 .admin-event-assignments { display: grid; gap: 8px; margin: 0; padding: 0; border: 0; }
 .admin-event-assignments legend { margin-bottom: 7px; }

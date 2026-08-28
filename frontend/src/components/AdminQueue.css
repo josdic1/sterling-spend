@@ -627,3 +627,88 @@
   .admin-queue-web { width: 100%; min-width: 0; max-width: none; margin: 0; padding: 16px; overflow-x: hidden; }
   .admin-queue-web .admin-queue-table-card { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 }
+
+
+/* STERLING LIVE ACTIVE V2 */
+.admin-live-row.ready,
+.admin-queue-mobile .admin-live-row.ready {
+  border-color: var(--color-line);
+  background: var(--color-card);
+  box-shadow: none;
+}
+
+.admin-live-row.ready .admin-live-state strong,
+.admin-queue-mobile .admin-live-row.ready .admin-live-state strong {
+  color: var(--color-subtle);
+}
+
+.admin-live-row.ready .admin-live-dot,
+.admin-queue-mobile .admin-live-row.ready .admin-live-dot {
+  background: #98a2b3;
+  opacity: .62;
+}
+
+.admin-live-row.active,
+.admin-queue-mobile .admin-live-row.active {
+  border-color: color-mix(in srgb, #178a46 52%, var(--color-line));
+  background: color-mix(in srgb, #178a46 6%, var(--color-card));
+  box-shadow: inset 3px 0 0 #178a46;
+}
+
+.admin-live-row.active .admin-live-state,
+.admin-queue-mobile .admin-live-row.active .admin-live-state {
+  width: fit-content;
+  min-height: 28px;
+  padding: 4px 9px;
+  border: 1px solid color-mix(in srgb, #178a46 22%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, #178a46 9%, transparent);
+  gap: 9px;
+}
+
+.admin-live-row.active .admin-live-state strong,
+.admin-queue-mobile .admin-live-row.active .admin-live-state strong {
+  color: #178a46;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .055em;
+}
+
+.admin-live-row.active .admin-live-status-line > strong,
+.admin-queue-mobile .admin-live-row.active .admin-live-status-line > strong {
+  color: var(--color-ink);
+}
+
+.admin-live-row.active .admin-live-dot.active,
+.admin-queue-mobile .admin-live-row.active .admin-live-dot.active {
+  position: relative;
+  width: 9px;
+  height: 9px;
+  background: #178a46;
+  box-shadow: none;
+  opacity: 1;
+}
+
+.admin-live-row.active .admin-live-dot.active::after,
+.admin-queue-mobile .admin-live-row.active .admin-live-dot.active::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border: 1.5px solid #178a46;
+  border-radius: 999px;
+  animation: sterling-live-sonar 1.7s ease-out infinite;
+  pointer-events: none;
+}
+
+@keyframes sterling-live-sonar {
+  0% { transform: scale(.9); opacity: .58; }
+  72% { transform: scale(2.5); opacity: 0; }
+  100% { transform: scale(2.5); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-live-row.active .admin-live-dot.active::after,
+  .admin-queue-mobile .admin-live-row.active .admin-live-dot.active::after {
+    animation: none;
+  }
+}

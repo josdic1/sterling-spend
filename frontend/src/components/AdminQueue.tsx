@@ -343,7 +343,7 @@ export default function AdminQueue({
                         }
                       />
                       <strong>
-                        {item.is_activated ? "ACTIVE" : "READY"}
+                        {item.is_activated ? "ACTIVE NOW" : "READY"}
                       </strong>
                     </span>
                   </div>

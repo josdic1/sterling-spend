@@ -42,6 +42,15 @@ const emptyForm: FormState = {
   assigned_user_ids: [],
 };
 
+const QUARTER_HOUR_OPTIONS = Array.from({ length: 96 }, (_, index) => {
+  const hour = Math.floor(index / 4);
+  const minute = (index % 4) * 15;
+  const value = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+  const displayHour = hour % 12 || 12;
+  const suffix = hour < 12 ? "AM" : "PM";
+  return { value, label: `${displayHour}:${String(minute).padStart(2, "0")} ${suffix}` };
+});
+
 function toForm(event: AdminEvent): FormState {
   return {
     event_number: event.event_number,
@@ -286,8 +295,20 @@ export default function AdminEvents({ adminUserId }: Props) {
                 </div>
               )}
             </div>
-            <label><span>Start time</span><input type="time" value={form.start_time} onChange={(e) => setForm({ ...form, start_time: e.target.value })} /></label>
-            <label><span>End time</span><input type="time" value={form.end_time} onChange={(e) => setForm({ ...form, end_time: e.target.value })} /></label>
+            <label>
+              <span>Start time</span>
+              <select value={form.start_time} onChange={(e) => setForm({ ...form, start_time: e.target.value })}>
+                <option value="">Select time</option>
+                {QUARTER_HOUR_OPTIONS.map((option) => <option key={`start-${option.value}`} value={option.value}>{option.label}</option>)}
+              </select>
+            </label>
+            <label>
+              <span>End time</span>
+              <select value={form.end_time} onChange={(e) => setForm({ ...form, end_time: e.target.value })}>
+                <option value="">Select time</option>
+                {QUARTER_HOUR_OPTIONS.map((option) => <option key={`end-${option.value}`} value={option.value}>{option.label}</option>)}
+              </select>
+            </label>
           </div>
 
           <fieldset className="admin-event-assignments">

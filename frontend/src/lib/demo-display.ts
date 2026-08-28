@@ -23,6 +23,8 @@ export function personDisplayName(args: {
     .replace(/^DEMO\s*[—-]\s*/i, "")
     .trim();
 
+  if (cleanName.includes(" · ")) return cleanName;
+
   const usernameKey = normalizeKey(args.username).replace(/^demo\s+/, "");
   const emailKey = normalizeKey(args.email).split("@")[0] ?? "";
   const nameKey = normalizeKey(cleanName).split(/\s+/)[0] ?? "";
