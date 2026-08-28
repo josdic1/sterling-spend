@@ -69,6 +69,102 @@ function eventDate(value: string) {
   return format(new Date(`${value.slice(0, 10)}T12:00:00`), "MMM d, yyyy");
 }
 
+
+// STERLING EVENT TIME PICKER V4 20260828
+function sterlingTimeParts(value: string) {
+  const match = /^(\d{2}):(\d{2})/.exec(value || "");
+  if (!match) {
+    return { hour: "", minute: "00", period: "AM" as "AM" | "PM" };
+  }
+
+  const hour24 = Number(match[1]);
+  const minute = match[2];
+  const period: "AM" | "PM" = hour24 >= 12 ? "PM" : "AM";
+  const hour12 = hour24 % 12 || 12;
+
+  return { hour: String(hour12), minute, period };
+}
+
+function sterlingTimeValue(hour: string, minute: string, period: "AM" | "PM") {
+  if (!hour) return "";
+
+  const hour12 = Number(hour);
+  let hour24 = hour12 % 12;
+  if (period === "PM") hour24 += 12;
+
+  return `${String(hour24).padStart(2, "0")}:${minute}`;
+}
+
+function SterlingEventTimeSelectV3({
+  value,
+  onChange,
+  ariaLabel,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  ariaLabel: string;
+}) {
+  void QUARTER_HOUR_OPTIONS;
+  const parts = sterlingTimeParts(value);
+  const standardMinutes = ["00", "15", "30", "45"];
+  const minuteOptions = standardMinutes.includes(parts.minute)
+    ? standardMinutes
+    : [parts.minute, ...standardMinutes];
+
+  return (
+    <div className="sterling-event-time-picker" role="group" aria-label={ariaLabel}>
+      <select
+        className="sterling-event-time-part sterling-event-time-hour"
+        value={parts.hour}
+        onChange={(event) =>
+          onChange(sterlingTimeValue(event.target.value, parts.minute, parts.period))
+        }
+        aria-label={`${ariaLabel} hour`}
+      >
+        <option value="">Hour</option>
+        {Array.from({ length: 12 }, (_, index) => String(index + 1)).map((hour) => (
+          <option key={hour} value={hour}>{hour}</option>
+        ))}
+      </select>
+
+      <span className="sterling-event-time-colon" aria-hidden="true">:</span>
+
+      <select
+        className="sterling-event-time-part sterling-event-time-minute"
+        value={parts.minute}
+        disabled={!parts.hour}
+        onChange={(event) =>
+          onChange(sterlingTimeValue(parts.hour, event.target.value, parts.period))
+        }
+        aria-label={`${ariaLabel} minutes`}
+      >
+        {minuteOptions.map((minute) => (
+          <option key={minute} value={minute}>{minute}</option>
+        ))}
+      </select>
+
+      <select
+        className="sterling-event-time-part sterling-event-time-period"
+        value={parts.period}
+        disabled={!parts.hour}
+        onChange={(event) =>
+          onChange(
+            sterlingTimeValue(
+              parts.hour,
+              parts.minute,
+              event.target.value as "AM" | "PM",
+            ),
+          )
+        }
+        aria-label={`${ariaLabel} AM or PM`}
+      >
+        <option value="AM">AM</option>
+        <option value="PM">PM</option>
+      </select>
+    </div>
+  );
+}
+
 export default function AdminEvents({ adminUserId }: Props) {
   const [events, setEvents] = useState<AdminEvent[]>([]);
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -295,19 +391,21 @@ export default function AdminEvents({ adminUserId }: Props) {
                 </div>
               )}
             </div>
-            <label>
+            <label className="sterling-event-time-field">
               <span>Start time</span>
-              <select value={form.start_time} onChange={(e) => setForm({ ...form, start_time: e.target.value })}>
-                <option value="">Select time</option>
-                {QUARTER_HOUR_OPTIONS.map((option) => <option key={`start-${option.value}`} value={option.value}>{option.label}</option>)}
-              </select>
+              <SterlingEventTimeSelectV3
+                value={form.start_time}
+                onChange={(value) => setForm({ ...form, start_time: value })}
+                ariaLabel="Event start time"
+              />
             </label>
-            <label>
+            <label className="sterling-event-time-field">
               <span>End time</span>
-              <select value={form.end_time} onChange={(e) => setForm({ ...form, end_time: e.target.value })}>
-                <option value="">Select time</option>
-                {QUARTER_HOUR_OPTIONS.map((option) => <option key={`end-${option.value}`} value={option.value}>{option.label}</option>)}
-              </select>
+              <SterlingEventTimeSelectV3
+                value={form.end_time}
+                onChange={(value) => setForm({ ...form, end_time: value })}
+                ariaLabel="Event end time"
+              />
             </label>
           </div>
 

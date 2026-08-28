@@ -751,3 +751,48 @@ button:disabled {
   }
   .employee-page { padding: 14px 14px calc(34px + env(safe-area-inset-bottom)); }
 }
+
+
+/* STERLING MOBILE CONTENT CUTOFF FIX 20260828 */
+@media (max-width: 760px) {
+  html,
+  body {
+    height: auto !important;
+    min-height: 100% !important;
+    max-height: none !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    position: static !important;
+  }
+
+  #root {
+    height: auto !important;
+    min-height: 100dvh !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  #root > * {
+    height: auto !important;
+    min-height: 100dvh !important;
+    max-height: none !important;
+  }
+
+  #root [class*="shell" i],
+  #root [class*="page" i],
+  #root [class*="content" i],
+  #root main {
+    max-height: none !important;
+  }
+
+  #root [class*="content" i],
+  #root main {
+    height: auto !important;
+    overflow-y: visible !important;
+  }
+
+  #root main,
+  #root [class*="content" i] {
+    padding-bottom: max(32px, calc(20px + env(safe-area-inset-bottom)));
+  }
+}
